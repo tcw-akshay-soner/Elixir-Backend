@@ -1,0 +1,262 @@
+import os.path
+
+import warnings
+import logging
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_JUSTIFY
+from reportlab.pdfgen import canvas
+from reportlab.platypus import Paragraph, TableStyle, Table
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+from src.engine.pharma_data import fetch_product, fetch_declaration_data
+
+stylesheet = getSampleStyleSheet()
+warnings.filterwarnings('ignore')
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+async def create_template_allergen(date, temp_dir, company, product_id):
+    
+    product_data = await fetch_product(product_id)
+    product_name = product_data[0]['product_name'] if product_data else "N/A"
+
+    declaration_data = await fetch_declaration_data(product_id)
+    allergen_map = {
+        "wheat": "No",
+        "eggs": "No",
+        "crustaceans_shell_fish": "No",
+        "fish": "No",
+        "milk": "No",
+        "tree_nuts": "No",
+        "peanuts": "No",
+        "soy": "No",
+        "sesame_seeds": "No",
+        "celery": "No",
+        "barley_oats_rye_spelt": "No",
+        "orange_kiwi_peaches_apples": "No",
+        "mushrooms": "No",
+        "mustard": "No",
+        "lupin": "No",
+        "mulluscs": "No",
+        "sulfur": "No"
+    }
+
+    # Update allergen values based on declaration data
+    for row in declaration_data:
+        for allergen in allergen_map:
+            if row.get(allergen) == 'Yes':
+                allergen_map[allergen] = "Yes"
+
+
+
+    # Determine code based on sulfur content
+    code = '02B0' if allergen_map['sulfur'] == 'Yes' else '02A0'
+
+    file_name = f"{company}_{product_name}_Allergen_{code}.pdf"
+    file_path = os.path.join(temp_dir, file_name)
+    c = canvas.Canvas(file_path)
+    w, h = A4
+    lineSpacing = 20
+
+    ### HEADER ###
+    ## Logo
+    mask = [0, 2, 40, 42, 136, 139]
+
+    if company == 'SEB':
+        c.drawImage('src/data/sebLogo.jpg', 30, 750, mask=mask, height=65, width=190)
+        y = h - 70 - lineSpacing
+        c.setFont('Cambria-Regular', 14)
+        c.setFillColorRGB(0.5, 0.5, 0.5, 0.7)
+        c.drawRightString(w - 60, y, "Proprietary and Confidential")
+        y = y - lineSpacing
+        ## Header Line
+        c.setStrokeColorRGB(0.5, 0.5, 0.5, 0.3)
+        c.line(30, y, 565, y)
+    elif company == 'EI':
+        c.drawImage('src/data/eiLogo.png', 30, 750, mask=mask, height=65, width=190)
+        y = h - 70 - lineSpacing
+        c.setFont('Cambria-Regular', 10)
+        c.setFillColorRGB(0.5, 0.5, 0.5, 0.7)
+        c.drawRightString(w - 60, y, "Proprietary and Confidential")
+        y = y - lineSpacing
+    ### HEADER ###
+
+    ## Title
+    y = y - lineSpacing
+    c.setFillColorRGB(0, 0, 0, 1)
+    c.setFont("Cambria-Bold", 14)
+    c.drawCentredString(w/2, y, "Allergen Information")
+    text_width = c.stringWidth("Allergen Information", "Cambria-Bold", 14)
+
+    ## Title Underline
+    x = (w / 2) - (text_width / 2)
+    c.setStrokeColorRGB(0, 0, 0, 1)
+    c.line(x, y - 16 * 0.2, x + text_width, y - 16 * 0.2)
+
+    ## Date
+    y = y - lineSpacing*2
+    c.setFont("Cambria-Regular", 12)
+    c.drawRightString(w-60, y, date)
+
+    ### BODY TEXT SECTION ###
+    ## TABLE ##
+    ## Allergen alphabet table according to code '01A0', '01B0'...
+    c.setFont("Cambria-Bold", 12)
+    c.drawString(60, y, f"Product: {product_name}")
+    y = y - lineSpacing
+    style = TableStyle([('GRID', (0, 0), (-1, -1), 1, colors.black),
+                        ('GRID', (0, 0), (0, -1), 1, colors.black),
+                        ('GRID', (-1, 0), (-1, -1), 1, colors.black),
+                        ('FONTNAME', (0, 0), (-1, -1), 'Cambria-Regular'),
+                        ('FONTSIZE', (0, 1), (-1, -1), 10, colors.black),
+                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+                        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                        ('TOPPADDING', (0, 0), (-1, -1), 5)])
+
+    ## Alphabet Template 'A'
+    # Shared allergen data template
+    data1 = [
+        'Wheat and products thereof;', 'Egg and products thereof;', 'Crustaceans or Shell-Fish',
+        'Fish and products thereof;', 'Milk and products thereof;',
+        'Tree Nuts \nAlmonds (Amygdalus communis L.), Brazil nut (Bertholletia excelsa), Cashew (Anacardium occidentale), \nHazelnut (Corylus avellana), Macadamia nut and Queensland nut (Macadamia ternifolia), \nPecan nut (Carya illinoiesis), Pistachio nut (Pistaca vera), Walnut (Juglans regia)',
+        'Peanuts', 'Soybean and products thereof;', 'Sesame seed', 'Celery',
+        'Barley \nOats \nRye \nSpelt', 'Orange \nKiwi \nPeaches \nApples', 'Mushrooms', 'Mustard',
+        'Lupin', 'Molluscs'
+    ]
+
+    # Copy allergen values to `data2` based on `allergen_map`
+    data2 = [
+        allergen_map["wheat"], allergen_map["eggs"], allergen_map["crustaceans_shell_fish"],
+        allergen_map["fish"], allergen_map["milk"], allergen_map["tree_nuts"],
+        allergen_map["peanuts"], allergen_map["soy"], allergen_map["sesame_seeds"],
+        allergen_map["celery"], allergen_map["barley_oats_rye_spelt"], allergen_map["orange_kiwi_peaches_apples"],
+        allergen_map["mushrooms"], allergen_map["mustard"], allergen_map["lupin"],
+        allergen_map["mulluscs"]
+    ]
+
+    # If sulfur is present, append specific statement to both data1 and data2
+    if code == '02B0':
+        data1.insert(-1, 'Sulfur at concentrations of more than 10 mg/kg - expressed as SO2')
+        data2.insert(-1, allergen_map["sulfur"])
+
+    # ## Alphabet Template 'C'
+    # elif code == '02C0':
+    #     data1 = ['Wheat and products thereof;', 'Egg and products thereof;', 'Crustaceans or Shell-Fish',
+    #             'Fish and products thereof;', 'Milk and products thereof;',
+    #             'Tree Nuts \nAlmonds (Amygdalus communis L.), Brazil nut (Bertholletia excelsa), Cashew (Anacardium occidentale), \nHazelnut (Corylus avellana), Macadamia nut and Queensland nut (Macadamia ternifolia), \nPecan nut (Carya illinoiesis),Pistachio nut (Pistaca vera), Walnut (Juglans regia)'
+    #         , 'Peanuts', 'Soybean and products thereof;', 'Sesame seed', 'Celery', 'Barley \nOats \nRye \nSpelt',
+    #             'Orange \nKiwi \nPeaches \nApples', 'Mushrooms', 'Mustard', 'Lupin', 'Molluscs']
+    #     data2 = ['NO', 'YES', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO']
+    #
+    # ## Alphabet Template 'D'
+    # elif code == '02D0':
+    #     data1 = ['Wheat and products thereof;', 'Egg and products thereof;', 'Crustaceans or Shell-Fish',
+    #             'Fish and products thereof;', 'Milk and products thereof;',
+    #             'Tree Nuts \nAlmonds (Amygdalus communis L.), Brazil nut (Bertholletia excelsa), Cashew (Anacardium occidentale), \nHazelnut (Corylus avellana), Macadamia nut and Queensland nut (Macadamia ternifolia), \nPecan nut (Carya illinoiesis),Pistachio nut (Pistaca vera), Walnut (Juglans regia)'
+    #         , 'Peanuts', 'Soybean and products thereof;', 'Sesame seed', 'Celery', 'Barley \nOats \nRye \nSpelt',
+    #             'Orange \nKiwi \nPeaches \nApples', 'Mushrooms', 'Mustard', 'Lupin', 'Molluscs']
+    #     data2 = ['NO', 'YES', 'NO', 'NO', 'YES', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO']
+    #
+    # ## Alphabet Template 'E'
+    # elif code == '02E0':
+    #     data1 = ['Wheat and products thereof;', 'Egg and products thereof;', 'Crustaceans or Shell-Fish',
+    #             'Fish and products thereof;', 'Milk and products thereof;',
+    #             'Tree Nuts \nAlmonds (Amygdalus communis L.), Brazil nut (Bertholletia excelsa), Cashew (Anacardium occidentale), \nHazelnut (Corylus avellana), Macadamia nut and Queensland nut (Macadamia ternifolia), \nPecan nut (Carya illinoiesis),Pistachio nut (Pistaca vera), Walnut (Juglans regia)'
+    #         , 'Peanuts', 'Soybean and products thereof;', 'Sesame seed', 'Celery', 'Barley \nOats \nRye \nSpelt',
+    #             'Orange \nKiwi \nPeaches \nApples', 'Mushrooms', 'Mustard', 'Lupin', 'Molluscs']
+    #     data2 = ['NO', 'NO', 'YES', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO']
+    #
+    # ## Alphabet Template 'F'
+    # elif code == '02F0':
+    #     data1 = ['Wheat and products thereof;', 'Egg and products thereof;', 'Crustaceans or Shell-Fish',
+    #             'Fish and products thereof;', 'Milk and products thereof;',
+    #             'Tree Nuts \nAlmonds (Amygdalus communis L.), Brazil nut (Bertholletia excelsa), Cashew (Anacardium occidentale), \nHazelnut (Corylus avellana), Macadamia nut and Queensland nut (Macadamia ternifolia), \nPecan nut (Carya illinoiesis),Pistachio nut (Pistaca vera), Walnut (Juglans regia)'
+    #         , 'Peanuts', 'Soybean and products thereof;', 'Sesame seed', 'Celery', 'Barley \nOats \nRye \nSpelt',
+    #             'Orange \nKiwi \nPeaches \nApples', 'Mushrooms', 'Mustard', 'Lupin', 'Molluscs']
+    #     data2 = ['YES', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO']
+    #
+    # ## Alphabet Template 'G'
+    # elif code == '02G0':
+    #     data1 = ['Wheat and products thereof;', 'Egg and products thereof;', 'Crustaceans or Shell-Fish',
+    #             'Fish and products thereof;', 'Milk and products thereof;',
+    #             'Tree Nuts \nAlmonds (Amygdalus communis L.), Brazil nut (Bertholletia excelsa), Cashew (Anacardium occidentale), \nHazelnut (Corylus avellana), Macadamia nut and Queensland nut (Macadamia ternifolia), \nPecan nut (Carya illinoiesis),Pistachio nut (Pistaca vera), Walnut (Juglans regia)'
+    #         , 'Peanuts', 'Soybean and products thereof;', 'Sesame seed', 'Celery', 'Barley \nOats \nRye \nSpelt',
+    #             'Orange \nKiwi \nPeaches \nApples', 'Mushrooms', 'Mustard', 'Lupin', 'Molluscs']
+    #     data2 = ['NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO', 'YES', 'NO', 'NO', 'NO', 'NO', 'NO']
+
+    ## For Table Creation
+    data = [[item1, item2] for item1, item2 in zip(data1, data2)]
+    t = Table(data, style=style)        # Creating Table with the available data
+    tw, th = t.wrap(w, h)       # Wrap the text to avoid overflow by reducing the available width
+    t.drawOn(c, (w - tw) / 2, y - th)       # Adjusting the Y-position to ensure proper alignment
+
+
+    y = y - th - lineSpacing
+    point_style = ParagraphStyle("point_Text",
+                                fontName="Cambria-Regular",
+                                fontSize=8,
+                                textColor=colors.black,
+                                alignment=TA_JUSTIFY,
+                                justifyBreaks=1,
+                                justifyLastLine=0,
+                                leading=14,
+                                leftIndent=70,
+                                rightIndent=70)
+
+    text_data = [("1."," For certain fermentation-derived ingredients, soy, milk and gluten-containing grains may be used in the fermentation media but are not an added ingredient to the product in its final form."),
+                ("2."," For certain products, soy, milk, egg (lysozyme), crustacean and gluten-containing grain products may be processed in the same facility and on the same machines.")]
+
+    for number, text in text_data:
+        c.setFont("Cambria-Regular", 8)
+        c.drawString(60, y + 6, number)
+        text = f"{text}"
+        p = Paragraph(text, point_style)
+        bw, bh = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
+        p.drawOn(c, 0, y - bh/2)  # Adjusting the Y-position to ensure proper alignment
+        y -= bh
+
+    ### FOOTER ###
+    if company == 'SEB':
+        c.setStrokeColorRGB(0.5, 0.5, 0.5, 0.3)
+        c.line(30, 100, 565, 100)
+    elif company == 'EI':
+        mask = [0, 2, 40, 42, 136, 139]
+        c.drawImage('src/data/EI_footer.jpg', 330, -105, mask=None, height=250, width=250)
+        c.setFillColorRGB(0, 0, 0, 1)
+
+    style_footer = ParagraphStyle("footer",
+                                fontName="Cambria-Regular",
+                                fontSize=8,
+                                textColor=colors.grey,
+                                alignment=TA_JUSTIFY,
+                                justifyBreaks=1,
+                                justifyLastLine=0,
+                                leftIndent=30,
+                                rightIndent=30,
+                                strikeColor=0.4)
+
+    footer_text = "The information is presented in good faith as of the date set forth herein and " \
+        "valid for one year, and we assume no obligation to update this<br/>statement. " \
+        "Nothing herein is intended as legal or regulatory advice. " \
+        "The information herein is presented solely for your independent<br/>consideration, review and verification. " \
+        "This statement does not constitute a representation or warranty regarding the product, and " \
+        "we shall have<br/>no liability regarding this statement or your use of the information contained herein."
+
+    p = Paragraph(footer_text, style_footer)
+    pfw, pfh = p.wrap(w, h)     # Wrap the text to avoid overflow by reducing the available width
+    p.drawOn(c, 0, pfh)     # Adjusting the Y-position to ensure proper alignment
+
+    product_name = product_name.replace(" ","")
+    c.setFont('Cambria-Regular', 8)
+    c.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
+    c.drawRightString(w - 30, pfh + 3,f"{product_name}_Allergen_{code}")
+    c.showPage()
+    c.save()
+    
+    return file_path, file_name

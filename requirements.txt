@@ -1,0 +1,15 @@
+fastapi
+pandas
+sentry-sdk[fastapi]
+pydantic
+uvicorn
+pyyaml
+sqlalchemy 
+databases
+aiomysql
+reportlab
+boto3 
+python-jose 
+requests
+python-dotenv
+greenlet
