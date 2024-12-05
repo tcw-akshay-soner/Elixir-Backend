@@ -38,20 +38,20 @@ async def font():
     # Register the Cambria font family
     return register_font_family("Cambria", cambria_fonts)
 
-# Secure routes
-@app.get("/secure-data")
-async def get_secure_data(current_user: Dict = Depends(get_current_user)):
-    return {"message": "This is secure data", "user": current_user}
+# # Secure routes
+# @app.get("/secure-data")
+# async def get_secure_data(current_user: Dict = Depends(get_current_user)):
+#     return {"message": "This is secure data", "user": current_user}
 
 # Debugging route to trigger Sentry errors
-@app.get("/sentry-debug", dependencies=[Depends(get_current_user)])
+@app.get("/sentry-debug")
 async def trigger_error():
     raise ValueError("This is a test error")
 
 # Root endpoint with YAML response
 @app.get("/", response_class=Response)
-async def read_root(request: Request, current_user: Dict = Depends(get_current_user)):
-    response_data = {"Hello": "World"}
+async def read_root(request: Request):
+    response_data = {"Mesaage": "Hello World!, Welcome to Pharma Api"}
     return Response(
         content=yaml.dump(response_data), 
         media_type="application/x-yaml",
@@ -63,7 +63,7 @@ async def read_root(request: Request, current_user: Dict = Depends(get_current_u
 
 
 # Custom Swagger UI documentation
-@app.get("/docs", include_in_schema=False, dependencies=[Depends(get_current_user)])
+@app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
     return get_swagger_ui_html(
         openapi_url="/openapi.json",
@@ -72,7 +72,7 @@ async def custom_swagger_ui_html():
 
 
 # Custom ReDoc documentation
-@app.get("/redoc", include_in_schema=False, dependencies=[Depends(get_current_user)])
+@app.get("/redoc", include_in_schema=False)
 async def redoc_html():
     return get_redoc_html(
         openapi_url="/openapi.yaml",
