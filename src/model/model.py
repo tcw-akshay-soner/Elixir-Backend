@@ -1,124 +1,50 @@
-from sqlalchemy import Table, Column, Integer, String, Float, DateTime, Boolean, func, TIMESTAMP
-from datetime import  datetime as dt
-from src.engine.pharma_db import metadata
-from pydantic import BaseModel
+from datetime import datetime
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional, List
+from enum import Enum
 import pytz
 
 # Set Indian timezone
 IST = pytz.timezone("Asia/Kolkata")
 
-items = Table(
-    "items",
-    metadata,
-    Column("product_id", String, nullable = True),              
-    Column("ing_item_code", String, nullable = False),      
-    Column("ing_name", String, nullable = False),                 
-    Column("per_composition", Float, nullable = False),
-    Column("created_at", DateTime),
-    Column("updated_at", DateTime)    
-)
-
-product = Table(
-    "product",
-    metadata,
-    Column("product_id", String, primary_key = True, unique= True, nullable=False),  # Auto-increment for unique ID
-    Column("product_name", String, nullable = False), 
-    Column("created_at", DateTime, nullable = True),
-    Column("updated_at", DateTime, nullable = True)
-)
-
-ingredient = Table(
-    "ingredient",
-    metadata,
-    Column("ing_item_code", String, primary_key = True, nullable = False),
-    Column("ing_name", String, nullable = False),
-    Column("vendor", String, nullable = False),                  
-    Column("rm_code", String, primary_key = True, nullable = False),
-    Column("cas_num", String, nullable = True),
-    Column("ec_num", String, nullable = True),
-    Column("ing_type", String, nullable = True),
-    Column("source_type", String, nullable = True),
-    Column("source", String, nullable = True),
-    Column("country_origin", String, nullable = True),
-    Column("created_at", DateTime, nullable=True),
-    Column("updated_at", DateTime, nullable=True),
-)
-
-declaration = Table(
-    "declaration",
-    metadata,
-    Column("ing_item_code", String, primary_key = True, nullable = False),
-    Column("rm_code", String, primary_key = True, nullable = True),
-    Column("vegetarian", String, nullable = True),
-    Column("vegan", String, nullable = True),
-    Column("non_gmo", String, nullable = True),
-    Column("classification", String, nullable = True),
-    Column("gluten_status", String, nullable = True),  # Gluten Free/ Gluten Containing
-    Column("bse_tse", String, nullable = True),
-    Column("declared_allergen", String, nullable = True),
-    Column("wheat", String, nullable = True),
-    Column("eggs", String, nullable = True),
-    Column("crustaceans_shell_fish", String, nullable = True),
-    Column("fish", String, nullable = True),
-    Column("milk", String, nullable = True),
-    Column("tree_nuts", String, nullable = True),
-    Column("peanuts", String, nullable = True),
-    Column("soy", String, nullable = True),
-    Column("sesame_seeds", String, nullable = True),
-    Column("celery", String, nullable = True),
-    Column("barley_oats_rye_spelt", String, nullable = True),
-    Column("orange_kiwi_peaches_apples", String, nullable = True),
-    Column("mushrooms", String, nullable = True),
-    Column("mustard", String, nullable = True),
-    Column("lupin", String, nullable = True),
-    Column("mulluscs", String, nullable = True),
-    Column("sulfur", String, nullable = True),
-    Column("allergen_fermentation", String, nullable = True),
-    Column("residual_solvent", String, nullable = True),
-    Column("wada_compliance", String, nullable = True),
-    Column("eto_treated", String, nullable = True),
-    Column("irradiated", String, nullable = True),
-    Column("sewage_sludge_treated", String, nullable = True),
-    Column("pesticide", String, nullable = True),
-    Column("aflatoxin", String, nullable = True),
-    Column("preservative", String, nullable = True),
-    Column("antibiotic", String, nullable = True),
-    Column("gras", String, nullable = True),
-    Column("prop65_complaint", String, nullable = True),
-    Column("created_at", DateTime),
-    Column("updated_at", DateTime)
-)
-
-fda = Table(
-    "fda",
-    metadata,
-    Column("company_id", Integer, primary_key = True, autoincrement = True),  # Auto-increment for unique ID
-    Column("company_name", String, nullable = False),
-    Column("fda_reg", String, unique = True ,nullable = False)
-)
-
-
-from datetime import datetime
-from pydantic import BaseModel, Field
-from typing import Optional, List
-
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 class IngredientData(BaseModel):
     ing_item_code: str = Field(...)
     ing_name: str = Field(...)
+    seq_no: int
+    other_ing: int
     per_composition: float
+    alpha_composition: str
+
 
 class Items(BaseModel):
     product_id: str = Field(...)
     ingredients: List[IngredientData]  # A list of ingredients
     created_at: Optional[datetime] = datetime.now(tz=IST)
     updated_at: Optional[datetime] = datetime.now(tz=IST)
-        
+
+class Symbols(BaseModel):
+    # symbol_id: int = Field(...)
+    symbol_name: str = Field(...)
+    symbol: str = Field(...)
+    symbol_code: str = Field(...)
+    created_at: Optional[datetime] = datetime.now(tz=IST)
+    updated_at: Optional[datetime] = datetime.now(tz=IST)
+
 class Product(BaseModel):
     product_id: str = Field(...)
     product_name: str = Field(...)
+    symbol_id: Optional[int] = Field(None, alias="symbol_id")
+    identified_uses: Optional[str] = Field(None, alias="identified_uses_of_application")
+    mixtures: Optional[str] = Field(None, alias="mixtures_of_application")
+    appearance: Optional[str] = Field(None, alias="product_appearance")
+    color: Optional[str] = Field(None, alias="product_color")
     created_at: Optional[datetime] = datetime.now(tz=IST)
     updated_at: Optional[datetime] = datetime.now(tz=IST)
+
 
 # Ingredient Pydantic model matching the "ingredient" table
 class Ingredient(BaseModel):
@@ -132,7 +58,28 @@ class Ingredient(BaseModel):
     source_type: str = Field(...)
     source: str = Field(...)
     country_origin: str = Field(..., alias="country_of_origin")
+    calories: Optional[float] = None 
+    fat: Optional[float] = None
+    carbohydrates: Optional[float] = None 
+    protein: Optional[float] = None
+    moisture: Optional[float] = None
+    ash: Optional[float] = None
     created_at: Optional[datetime] = datetime.now(tz=IST)
+    updated_at: Optional[datetime] = datetime.now(tz=IST)
+
+class IngredientUpdate(BaseModel):
+    cas_num: Optional[str] = None
+    ec_num: Optional[str] = None
+    ing_type: Optional[str] = None
+    source_type: Optional[str] = None
+    source: Optional[str] = None
+    country_origin: Optional[str] = None
+    calories: Optional[float] = None
+    fat: Optional[float] = None
+    carbohydrates: Optional[float] = None
+    protein: Optional[float] = None
+    moisture: Optional[float] = None
+    ash: Optional[float] = None
     updated_at: Optional[datetime] = datetime.now(tz=IST)
 
 # Declaration Pydantic model matching the "declaration" table
@@ -146,23 +93,23 @@ class Declaration(BaseModel):
     gluten_status: Optional[str] = None
     bse_tse: Optional[str] = None
     declared_allergen: Optional[str] = None
-    wheat : Optional[str] = None
-    eggs : Optional[str] = None
-    crustaceans_shell_fish : Optional[str] = None
-    fish : Optional[str] = None
-    milk : Optional[str] = None 
-    tree_nuts : Optional[str] = None
-    peanuts : Optional[str] = None
-    soy : Optional[str] = None
-    sesame_seeds : Optional[str] = None
-    celery : Optional[str] = None
-    barley_oats_rye_spelt : Optional[str] = None
-    orange_kiwi_peaches_apples : Optional[str] = None
-    mushrooms : Optional[str] = None
-    mustard : Optional[str] = None
-    lupin : Optional[str] = None
-    mulluscs : Optional[str] = None
-    sulfur : Optional[str] = None
+    wheat: Optional[str] = None
+    eggs: Optional[str] = None
+    crustaceans_shell_fish: Optional[str] = None
+    fish: Optional[str] = None
+    milk: Optional[str] = None
+    tree_nuts: Optional[str] = None
+    peanuts: Optional[str] = None
+    soy: Optional[str] = None
+    sesame_seeds: Optional[str] = None
+    celery: Optional[str] = None
+    barley_oats_rye_spelt: Optional[str] = None
+    orange_kiwi_peaches_apples: Optional[str] = None
+    mushrooms: Optional[str] = None
+    mustard: Optional[str] = None
+    lupin: Optional[str] = None
+    molluscs: Optional[str] = None
+    sulfur: Optional[str] = None
     allergen_fermentation: Optional[str] = None
     residual_solvent: Optional[str] = None
     wada_compliance: Optional[str] = None
@@ -178,6 +125,7 @@ class Declaration(BaseModel):
     created_at: Optional[datetime] = datetime.now(tz=IST)
     updated_at: Optional[datetime] = datetime.now(tz=IST)
 
+
 class FDA(BaseModel):
     company_id: int = Field(...)
     company_name: str = Field(...)
@@ -185,7 +133,45 @@ class FDA(BaseModel):
 
 
 class GenerateRequest(BaseModel):
-    company_name : str
-    product_id : str
-    template_name : str
-    customer_name : Optional[str] = None
+    company_name: str
+    product_id: str
+    template_name: str
+    customer_name: Optional[str] = None
+
+# ----------------------
+# User Schemas
+# ----------------------
+
+class Roles(str, Enum):
+    user = "user"
+    admin = "admin"
+
+
+class UserBase(BaseModel):
+    email: EmailStr
+    name : str
+    is_active : bool
+    role : Roles = Roles.user # Explicitly set default role and Enum Usage
+    # password: Optional[str] = None  # Add this field (not recommended)
+
+class UserCreate(UserBase):
+    password: str  # Password required for account creation
+    
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    name: Optional[str] = None
+    is_active: Optional[bool] = None
+    role: Optional[Roles] = None    
+
+class UserResponse(UserBase):
+    token: str # Includes JWT Token in response
+
+class UserWithPassword(UserBase):
+    password: str  # Includes password
+
+class AdminDashboardResponse(BaseModel):
+    message: str
+    Users: List[UserWithPassword]
+    
+

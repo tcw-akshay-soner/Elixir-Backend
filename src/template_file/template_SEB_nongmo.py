@@ -9,18 +9,36 @@ from reportlab.platypus import Paragraph
 
 from src.engine.pharma_data import fetch_product, fetch_declaration_data
 from src.template_file import letterhead
+from rich.logging import RichHandler
+import warnings
+# Configure RichHandler
+logging.basicConfig(
+        level="DEBUG",
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True)]
+)
+logger = logging.getLogger(__name__)
 
 stylesheet = getSampleStyleSheet()
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+warnings.filterwarnings('ignore')
 
 
 async def create_template_nongmo(date, temp_dir, company, product_id):
     ## Product Data ##
     product_data = await fetch_product(product_id)
-    product_name = product_data[0]['product_name'] if product_data else "N/A"
+    # product_name = product_data[0]['product_name'] if product_data else "N/A"
+    for row in product_data:
+        product_name = row['product_name']
+        symbol_id = row['symbol_id']
+        symbol_code = row['symbol_code']
+        # symbol_name = row['symbol_name']
+        symbol = row['symbol']
 
+    if symbol_id:
+        product_name_footer = product_name.replace(' ', '').replace(chr(int(symbol_code, 16)), '')
+    else:
+        product_name_footer = product_name.replace(' ', '')
     ## Declaration Data ##
     non_gmo = "Yes"
     declaration_data = await fetch_declaration_data(product_id)
@@ -29,7 +47,7 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
             non_gmo = "No"
     # Dataset for product name
     # code = '01F0'       ## Alphabet Template Code Coming from Database
-    file_name = f"{company}_{product_name}_NonGMO.pdf"
+    file_name = f"{company}_{product_name_footer}_NonGMO.pdf"
     file_path = os.path.join(temp_dir, file_name)
     
     c = canvas.Canvas(file_path)    # Product Name From Database
@@ -45,8 +63,28 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
 
     ## Product Section
     y = y - lineSpacing * 4
-    c.setFont('Cambria-Bold', 30)
-    c.drawRightString(w - 30, y, product_name)  # Placeholder for product name
+    # Placeholder for product name
+    if symbol_id == 1 or symbol_id == 4:
+        c.setFont('Cambria-Bold', 30)
+        c.drawRightString(w - 30, y, product_name)
+    else:
+        text = product_name
+        width = c.stringWidth(text, "Cambria-Bold", 30)
+        charSpace = 0
+        wordSpace = None
+        if charSpace:
+            width += (len(text) - 1) * charSpace
+        if wordSpace:
+            width += (text.count(u' ') + text.count(u'\xa0') - 1) * wordSpace
+        text_object = c.beginText(w - 30 - width, y)
+        product_name = product_name.replace(chr(int(symbol_code, 16)), '')
+        text_object.setFont("Cambria-Bold", 30)
+        text_object.textOut(product_name)
+        text_object.setRise(6)
+        text_object.setFont("Cambria-Bold", 30)
+        text_object.textOut(symbol)
+        text_object.setRise(0)
+        c.drawText(text_object)
 
     y = y - lineSpacing
     c.setFont('Cambria-Regular', 10)
@@ -120,13 +158,13 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
         p.drawOn(c, 0, y - p_height)        # Adjusting the Y-position to ensure proper alignment
         y -= (p_height + 30)
 
-    product_name = product_name.replace(" ","")
     c.setFont('Cambria-Regular', 8)
-    c.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
+    # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
+    c.setFillColorRGB(0, 0, 0, 1)
     if non_gmo == 'No':
-        c.drawRightString(w - 30, pfh + 3, f'{product_name}_GMO Dec_01B0')
+        c.drawRightString(w - 30, pfh + 6, f'{product_name_footer}_GMO Dec_01B0')
     else:
-        c.drawRightString(w - 30, pfh + 3, f'{product_name}_nonGMO')
+        c.drawRightString(w - 30, pfh + 6, f'{product_name_footer}_nonGMO')
 
     c.showPage()
     c.save()
