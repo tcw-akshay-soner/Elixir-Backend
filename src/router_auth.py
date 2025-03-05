@@ -194,7 +194,7 @@ async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
     current_time = datetime.now(timezone.utc).timestamp()
     remaining_time = access_expiry - current_time
     
-    if remaining_time >= 300:
+    if remaining_time >= 5 * 60:
         return JSONResponse(content={"message": "Access token is still valid", "expires_in": remaining_time})
 
     # if access_expiry > current_time > 5 * 60:

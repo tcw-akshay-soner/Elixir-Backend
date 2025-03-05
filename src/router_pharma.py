@@ -254,7 +254,15 @@ async def read_items_data(
 ):
     try:
         # query = select(items).where(items.c.product_id == product_id)
-        query = select(product.c.product_name, items).join(
+        query = select(
+            product.c.product_name,
+            product.c.identified_uses,
+            product.c.mixtures,
+            product.c.appearance,
+            product.c.color,
+            product.c.symbol_id,
+            items
+            ).join(
             product,
             product.c.product_id == items.c.product_id,
             isouter=True  # LEFT JOIN
