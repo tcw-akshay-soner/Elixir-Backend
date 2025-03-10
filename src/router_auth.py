@@ -71,7 +71,7 @@ async def login(request: model.LoginRequest, db: AsyncSession = Depends(get_db))
         key="access_token",
         value=access_token,
         httponly=True,
-        # secure=True,
+        secure=True,
         samesite="None",
         max_age=60*60  # 60 minutes
         )
@@ -79,7 +79,7 @@ async def login(request: model.LoginRequest, db: AsyncSession = Depends(get_db))
             key="refresh_token",
             value=refresh_token,
             httponly=True,
-            # secure=True, 
+            secure=True, 
             samesite="None", # Important for cross-origin requests
             max_age=60*60*24  # 1 days
             
@@ -225,13 +225,13 @@ async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
     }
 
     response = JSONResponse(content=response_data)
-    response.set_cookie("access_token", new_access_token, httponly=True, secure=False, samesite="None", max_age=60 * 60)
+    response.set_cookie("access_token", new_access_token, httponly=True, secure=True, samesite="None", max_age=60 * 60)
 
     # Generate new refresh token only if it's about to expire (within 5 minutes)
     refresh_lifespan = 60 * 60 * 24  # Assuming 24 hours (modify as per your config)
     if refresh_expiry - current_time <= 5 * 60:  # If refresh token has ≤5 minutes left
         new_refresh_token, new_refresh_expiry = await create_refresh_token(user)
-        response.set_cookie("refresh_token", new_refresh_token, httponly=True, secure=False, samesite="None", max_age=refresh_lifespan)
+        response.set_cookie("refresh_token", new_refresh_token, httponly=True, secure=True, samesite="None", max_age=refresh_lifespan)
         response_data["refresh_token_expires_in"] = int(new_refresh_expiry - current_time)
 
     return response
@@ -289,6 +289,6 @@ async def update_user_profile(
 @auth_router.post("/logout")
 async def logout(request: Request):
     response = JSONResponse(content={"message": "Logout successful"})
-    response.delete_cookie("access_token", httponly=True, secure=False, samesite="None")
-    response.delete_cookie("refresh_token", httponly=True, secure=False, samesite="None")
+    response.delete_cookie("access_token", httponly=True, secure=True, samesite="None")
+    response.delete_cookie("refresh_token", httponly=True, secure=True, samesite="None")
     return response
