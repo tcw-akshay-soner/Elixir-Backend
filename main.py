@@ -26,13 +26,9 @@ app = FastAPI(
 )
 
 AllOWED_ORIGINS = [
-    "http://localhost",
-    "http://localhost:8000",
+    "*",
     "http://localhost:3000",
-    "https://elixir-back-auth.onrender.com",
-    "https://b5vpghp4-3000.inc1.devtunnels.ms",
-    "https://jct0rh91-8000.inc1.devtunnels.ms",
-    "https://dwf9cgn6-3000.inc1.devtunnels.ms"
+    "http://localhost:8000",
 ]
 
 # CORS Middleware with AWS Cognito support
