@@ -133,7 +133,7 @@ async def check_session(request: Request, db: AsyncSession = Depends(get_db)):
 
     return {
         "message": "User authenticated",
-        "user": {"email": user.email, "role": user.role.value, "name": user.name}
+        "user": {"email": user.email, "role": user.role.value, "name": user.name, "is_active": user.is_active}
     }
 
 # Admin Dashboard (Restricted to Admins Only)
