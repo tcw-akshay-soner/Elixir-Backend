@@ -31,6 +31,10 @@ async def create_template_fsma(date, temp_dir, company, product_id):
     
     file_name = f"{company}_FSMA_01A0.pdf"
     file_path = os.path.join(temp_dir, file_name)
+    if company == "SEB":
+        company_name = "Specialty Enzymes & Probiotics"
+    elif company == "EI":
+        company_name = "Enzyme Innovation"
     
     c = canvas.Canvas(file_path)
     w, h = A4
@@ -85,8 +89,7 @@ async def create_template_fsma(date, temp_dir, company, product_id):
                                 leftIndent=50,
                                 rightIndent=50)
 
-    text = "The Food Safety and Modernization Act (FSMA) was signed into law on January 4, 2011." \
-        " Specialty Enzymes has been observing compliance various aspects of FSMA."
+    text = f"""The Food Safety and Modernization Act (FSMA) was signed into law on January 4, 2011. {company_name} has been observing compliance various aspects of FSMA."""
     p = Paragraph(text, style_body)
     w, h = p.wrap(w, h)     # Wrap the text to avoid overflow by reducing the available width
     p.drawOn(c, 0, y - h)       # Adjusting the Y-position to ensure proper alignment
@@ -122,10 +125,10 @@ async def create_template_fsma(date, temp_dir, company, product_id):
         y -= bh + lineSpacing / 2
 
     y = y - lineSpacing
-    text = "Specialty Enzymes is committed to supplying safe and finest quality products to our customers. " \
+    text = f"{company_name} is committed to supplying safe and finest quality products to our customers. " \
         "Maintaining your trust in our quality products is of prime importance to us. " \
         "If you have additional questions please contact the quality department or your sales rep at " \
-        "Specialty Enzymes & Probiotics."
+        f"{company_name}."
     p = Paragraph(text, style_body)
     w, h = p.wrap(w, h)     # Wrap the text to avoid overflow by reducing the available width
     p.drawOn(c, 0, y - h)       # Adjusting the Y-position to ensure proper alignment

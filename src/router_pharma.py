@@ -281,7 +281,11 @@ async def read_items_data(
 @mainRouter.get("/fetch_ingredient")
 async def read_all_ingredient_data(db: AsyncSession = Depends(get_db)):
     try:
-        query = select(ingredient)
+        query = select(ingredient, declaration).join(
+            declaration,
+            declaration.c.ing_item_code == ingredient.c.ing_item_code,
+            isouter=True  # LEFT JOIN
+        )
         result = await db.execute(query)
         data = result.fetchall()
         return {"data": [dict(row._mapping) for row in data]}
@@ -311,17 +315,22 @@ async def read_ingredient_data(
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
-# @mainRouter.get("/fetch_declaration")       ##### NOT REQUIRED  #####
-# async def read_data(
-#     db: AsyncSession = Depends(get_db)
-# ):
-#     try:
-#         query = select(declaration)  # No need for a list; select already expects a Table
-#         result = await db.execute(query)
-#         data = result.fetchall()
-#         return {"data": [dict(row._mapping) for row in data]}
-#     except SQLAlchemyError as e:
-#         raise HTTPException(status_code = 500, detail = str(e))
+@mainRouter.get("/fetch_declaration")
+async def fetch_declaration_data(
+        ing_item_code: str,
+        rm_code: str,
+        db: AsyncSession = Depends(get_db)
+):
+    try:
+        query = select(declaration).where(
+            (declaration.c.ing_item_code == ing_item_code) &
+            (declaration.c.rm_code == rm_code)
+        )  # No need for a list; select already expects a Table
+        result = await db.execute(query)
+        data = result.fetchall()
+        return {"data": [dict(row._mapping) for row in data]}
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code = 500, detail = str(e))
 
 
 # @mainRouter.delete("/product/{product_id}")

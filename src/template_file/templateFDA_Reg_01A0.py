@@ -31,6 +31,10 @@ async def create_template_fda(date, temp_dir, company, product_id):
 
         fda = await fetch_fda(company)
         REG_NUM = fda[0]['fda_reg'] if fda else "N/A"
+        if company == "SEB":
+            company_name = "Specialty Enzymes & Probiotics"
+        elif company == "EI":
+            company_name = "Enzyme Innovation"
 
         file_name = f"{company}_FDA REG_01A0"
         file_path = os.path.join(temp_dir, file_name)
@@ -89,8 +93,8 @@ async def create_template_fda(date, temp_dir, company, product_id):
                         leftIndent=50,
                         rightIndent=50)
 
-        text = "Specialty Enzymes & Probiotics facilities located at Chino, California, USA "\
-        "have been registered with US FDA in accordance with Bioterrorism Act 2002."
+        text = (f"{company_name} facilities located at Chino, California, USA have been registered with US FDA in "
+                f"accordance with Bioterrorism Act 2002.")
         p = Paragraph(text, style_body)
         w, h = p.wrap(w, h)     # Wrap the text to avoid overflow by reducing the available width
         p.drawOn(c, 0, y)       # Adjusting the Y-position to ensure proper alignment
