@@ -7,24 +7,24 @@ from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import NoResultFound, SQLAlchemyError
 from contextlib import asynccontextmanager
-import os 
+import os
 import tempfile
 from typing import List
 # Import engine and metadata
 from src.engine.pharma_db import engine, metadata, get_db, Base
-from src.model.model import(
+from src.model.model import (
     IngredientUpdate,
-    Product, 
-    Ingredient, 
-    Declaration, 
-    Items, 
-    Symbols, 
+    Product,
+    Ingredient,
+    Declaration,
+    Items,
+    Symbols,
     GenerateRequest
 )
-from src.model.schemas import(
-    product, 
-    ingredient, 
-    declaration, 
+from src.model.schemas import (
+    product,
+    ingredient,
+    declaration,
     symbols,
     items,
 )
@@ -69,13 +69,14 @@ async def lifespan(app: FastAPI):
 
         # Create tables for ORM-based models like User
         await conn.run_sync(Base.metadata.create_all)
-        
+
     yield
     # Shutdown: dispose engine
     await engine.dispose()
 
+
 # Set up router
-mainRouter = APIRouter(lifespan = lifespan)
+mainRouter = APIRouter(lifespan=lifespan)
 
 
 def get_router() -> APIRouter:
@@ -262,7 +263,7 @@ async def read_items_data(
             product.c.color,
             product.c.symbol_id,
             items
-            ).join(
+        ).join(
             product,
             product.c.product_id == items.c.product_id,
             isouter=True  # LEFT JOIN
@@ -330,7 +331,7 @@ async def fetch_declaration_data(
         data = result.fetchall()
         return {"data": [dict(row._mapping) for row in data]}
     except SQLAlchemyError as e:
-        raise HTTPException(status_code = 500, detail = str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # @mainRouter.delete("/product/{product_id}")
@@ -352,9 +353,28 @@ async def fetch_declaration_data(
 
 @mainRouter.patch("/item/{product_id}")
 async def update_item(
-        product_id: str, data: Items, db: AsyncSession = Depends(get_db)
+        product_id: str, data: Items, data1: Product,db: AsyncSession = Depends(get_db)
 ):
     try:
+        # Updating Product Table
+        product_update_query = (
+            product.update()
+            .where(product.c.product_id == product_id)
+            .values(
+                product_id=data1.product_id,
+                product_name=data1.product_name,
+                symbol_id=data1.symbol_id,
+                identified_uses=data1.identified_uses,
+                mixtures=data1.mixtures,
+                appearance=data1.appearance,
+                color=data1.color,
+                updated_at=data1.updated_at
+            ))
+        result = await db.execute(product_update_query)
+
+        # If the product does not exist, return an error
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
         # Updating the list of ingredients
         for ingredient in data.ingredients:
             ingredient_update_query = (
@@ -364,7 +384,7 @@ async def update_item(
                     (items.c.ing_item_code == ingredient.ing_item_code)
                 )
                 .values(
-                    product_id=data.product_id,
+                    product_id=data1.product_id,
                     ing_item_code=ingredient.ing_item_code,
                     seq_no=ingredient.seq_no,
                     ing_name=ingredient.ing_name,
@@ -388,6 +408,7 @@ async def update_item(
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # @mainRouter.patch("/ingredient/{ing_item_code}")  # update ingredient table by ingredient item code and rm code
 # async def update_ingredient(ing_item_code: str, rm_code: List[str], data: Ingredient, db: AsyncSession = Depends(get_db)):
@@ -424,28 +445,29 @@ async def update_item(
 
 @mainRouter.patch("/ingredient/{ing_item_code}")  # update ingredient table by ingredient item code and rm code
 async def update_ingredient(
-    ing_item_code: str, 
-    rm_codes: List[str] = Query([], description="List of RM codes"),
-    data: IngredientUpdate = Depends(),
-    db: AsyncSession = Depends(get_db)
+        ing_item_code: str,
+        rm_codes: List[str] = Query([], description="List of RM codes"),
+        data: IngredientUpdate = Depends(),
+        db: AsyncSession = Depends(get_db)
 ):
     try:
         if not rm_codes:
             raise HTTPException(status_code=400, detail="RM codes are required.")
-        
+
         # Prepara only the data that is provided in the request
         update_ing_data = {
-            key:value for key , value in data.dict(exclude_unset=True).items() 
+            key: value for key, value in data.dict(exclude_unset=True).items()
             if value is not None
         }
-        
+
         if not update_ing_data:
-            raise HTTPException(status_code = 400, detail = "No valid update data provided.")
-        
+            raise HTTPException(status_code=400, detail="No valid update data provided.")
+
         # Ensure `ing_item_code` and `rm_code` are NOT being updated
         if "ing_item_code" in update_ing_data or "rm_code" in update_ing_data:
-            raise HTTPException(status_code=400, detail="(Duplicate Data, data exist) Cannot update primary key fields (ing_item_code, rm_code).")
-        
+            raise HTTPException(status_code=400,
+                                detail="(Duplicate Data, data exist) Cannot update primary key fields (ing_item_code, rm_code).")
+
         # Query to update an ingredient by ingredient_item_code and rm_code
         query = (
             ingredient.update()
@@ -471,10 +493,10 @@ async def update_ingredient(
 
 @mainRouter.patch("/declaration/{ing_item_code}")
 async def update_declaration(
-    ing_item_code: str,
-    rm_code: str,
-    data1 : Declaration,
-    db: AsyncSession = Depends(get_db)
+        ing_item_code: str,
+        rm_code: str,
+        data1: Declaration,
+        db: AsyncSession = Depends(get_db)
 ):
     try:
         query = (
@@ -484,55 +506,55 @@ async def update_declaration(
                 (declaration.c.rm_code == rm_code)
             )
             .values(
-            ing_item_code=data1.ing_item_code,
-            rm_code=data1.rm_code,
-            vegetarian=data1.vegetarian,
-            vegan=data1.vegan,
-            non_gmo=data1.non_gmo,
-            classification=data1.classification,
-            gluten_status=data1.gluten_status,
-            bse_tse=data1.bse_tse,
-            wheat=data1.wheat,
-            eggs=data1.eggs,
-            crustaceans_shell_fish=data1.crustaceans_shell_fish,
-            fish=data1.fish,
-            milk=data1.milk,
-            tree_nuts=data1.tree_nuts,
-            peanuts=data1.peanuts,
-            soy=data1.soy,
-            sesame_seeds=data1.sesame_seeds,
-            celery=data1.celery,
-            barley_oats_rye_spelt=data1.barley_oats_rye_spelt,
-            orange_kiwi_peaches_apples=data1.orange_kiwi_peaches_apples,
-            mushrooms=data1.mushrooms,
-            mustard=data1.mustard,
-            lupin=data1.lupin,
-            molluscs=data1.molluscs,
-            sulfur=data1.sulfur,
-            residual_solvent=data1.residual_solvent,
-            wada_compliance=data1.wada_compliance,
-            eto_treated=data1.eto_treated,
-            irradiated=data1.irradiated,
-            sewage_sludge_treated=data1.sewage_sludge_treated,
-            pesticide=data1.pesticide,
-            aflatoxin=data1.aflatoxin,
-            preservative=data1.preservative,
-            antibiotic=data1.antibiotic,
-            gras=data1.gras,
-            prop65_complaint=data1.prop65_complaint,
-            updated_at = data1.updated_at  # Ensure this column exists in the model
+                ing_item_code=data1.ing_item_code,
+                rm_code=data1.rm_code,
+                vegetarian=data1.vegetarian,
+                vegan=data1.vegan,
+                non_gmo=data1.non_gmo,
+                classification=data1.classification,
+                gluten_status=data1.gluten_status,
+                bse_tse=data1.bse_tse,
+                wheat=data1.wheat,
+                eggs=data1.eggs,
+                crustaceans_shell_fish=data1.crustaceans_shell_fish,
+                fish=data1.fish,
+                milk=data1.milk,
+                tree_nuts=data1.tree_nuts,
+                peanuts=data1.peanuts,
+                soy=data1.soy,
+                sesame_seeds=data1.sesame_seeds,
+                celery=data1.celery,
+                barley_oats_rye_spelt=data1.barley_oats_rye_spelt,
+                orange_kiwi_peaches_apples=data1.orange_kiwi_peaches_apples,
+                mushrooms=data1.mushrooms,
+                mustard=data1.mustard,
+                lupin=data1.lupin,
+                molluscs=data1.molluscs,
+                sulfur=data1.sulfur,
+                residual_solvent=data1.residual_solvent,
+                wada_compliance=data1.wada_compliance,
+                eto_treated=data1.eto_treated,
+                irradiated=data1.irradiated,
+                sewage_sludge_treated=data1.sewage_sludge_treated,
+                pesticide=data1.pesticide,
+                aflatoxin=data1.aflatoxin,
+                preservative=data1.preservative,
+                antibiotic=data1.antibiotic,
+                gras=data1.gras,
+                prop65_complaint=data1.prop65_complaint,
+                updated_at=data1.updated_at  # Ensure this column exists in the model
             )
         )
         result = await db.execute(query)
         await db.commit()
         if result.rowcount == 0:
-            raise HTTPException(status_code=404, detail=f"Declaration for ingredient {ing_item_code} and rm_code {rm_code} not found.")
+            raise HTTPException(status_code=404,
+                                detail=f"Declaration for ingredient {ing_item_code} and rm_code {rm_code} not found.")
         return {"message": f"Declaration for ingredient {ing_item_code} updated successfully!"}
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-    
-            
+
 
 @mainRouter.delete("/ingredient/{ing_item_code}")
 async def delete_ingredient(ing_item_code: str, rm_code: str, db: AsyncSession = Depends(get_db)):
@@ -774,10 +796,10 @@ async def get_all_information(db: AsyncSession = Depends(get_db)):
 
         return JSONResponse(content=result_dict, status_code=200)
     except SQLAlchemyError as e:
-        raise HTTPException(status_code=500, detail = f" Database error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f" Database error: {str(e)}")
     except Exception as e:
         print(f"Error occurred: {e}")
-        raise HTTPException(status_code=500, detail = f"Exception Occur at {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Exception Occur at {str(e)}")
 
 
 @mainRouter.get("/templates")
