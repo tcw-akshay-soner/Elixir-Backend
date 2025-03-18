@@ -67,13 +67,13 @@ class Ingredient(BaseModel):
     created_at: Optional[datetime] = datetime.now(tz=IST)
     updated_at: Optional[datetime] = datetime.now(tz=IST)
 
-class IngredientUpdate(BaseModel):
+class GlobalUpdates(BaseModel):
+    ing_name: Optional[str] = None
     cas_num: Optional[str] = None
     ec_num: Optional[str] = None
     ing_type: Optional[str] = None
     source_type: Optional[str] = None
     source: Optional[str] = None
-    country_origin: Optional[str] = None
     calories: Optional[float] = None
     fat: Optional[float] = None
     carbohydrates: Optional[float] = None
@@ -81,6 +81,16 @@ class IngredientUpdate(BaseModel):
     moisture: Optional[float] = None
     ash: Optional[float] = None
     updated_at: Optional[datetime] = datetime.now(tz=IST)
+
+class RowUpdates(BaseModel):  # 🔹 Fields that apply to specific rm_code
+    rm_code: str
+    vendor: Optional[str] = None
+    country_origin: Optional[str] = None
+
+class IngredientUpdate(BaseModel):  # 🔹 Main Update Request Model
+    ing_item_code: str
+    global_updates: Optional[GlobalUpdates] = None
+    row_updates: Optional[List[RowUpdates]] = None
 
 # Declaration Pydantic model matching the "declaration" table
 class Declaration(BaseModel):
