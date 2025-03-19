@@ -499,52 +499,63 @@ async def update_ingredient(
         db: AsyncSession = Depends(get_db)
 ):
     try:
+        # Fetch existing rows for the ingredient
+        rmcode_query = select(
+            ingredient.c.rm_code, 
+            ingredient.c.vendor, 
+            ingredient.c.country_origin
+        ).where(ingredient.c.ing_item_code == ing_item_code)
 
-        rmcode_test = select(ingredient.c.rm_code).where(ingredient.c.ing_item_code == ing_item_code)
-        result_test = await db.execute(rmcode_test)
-        rm_codes = [row[0] for row in result_test.fetchall()]
-        # print(f"Rm Codes are : {rm_codes}")
-        
-        if not rm_codes:
+        result = await db.execute(rmcode_query)
+        existing_rm_codes = [tuple(row) for row in result.fetchall()]
+        print(f"Existing RM Codes: {existing_rm_codes}")
+
+        if not existing_rm_codes:
             raise HTTPException(status_code=404, detail="Ingredient not found")
         
-        # Apply Global Updates (All rows where ing_item_code matches)
+        # Apply Global Updates (affects all rows with the same ing_item_code)
         if update_request.global_updates:
             global_update_data = update_request.global_updates.dict(exclude_unset=True)
             if global_update_data:
-                query = (
+                global_update_query = (
                     ingredient.update()
                     .where(ingredient.c.ing_item_code == ing_item_code)
                     .values(**global_update_data)
                 )
-                await db.execute(query)
+                await db.execute(global_update_query)
 
-        # Apply Row-Specific Updates
+        # Apply Row-Specific Updates (updates individual rows)
         if update_request.row_updates:
-            for r,row in enumerate(update_request.row_updates):
-                    row_update_data = row.dict(exclude_unset=True)
-                    # rm_code = row_update_data.pop("rm_code")  # Extract rm_code for conditional update                
-                    rm_code = rm_codes[r]
-                    query = (
-                        ingredient.update()
-                        .where(
-                            (ingredient.c.ing_item_code == ing_item_code) &
-                            (ingredient.c.rm_code == rm_code)
-                        )
-                        .values(**row_update_data)
+            for index, row in enumerate(update_request.row_updates):
+                row_update_data = row.dict(exclude_unset=True)
+
+                # Extract the new rm_code, vendor, and country_origin
+                new_rm_code = row_update_data.pop("rm_code", None)
+                new_vendor = row_update_data.pop("vendor", None)
+                new_country_origin = row_update_data.pop("country_origin", None)
+
+                # Get existing rm_code, vendor, country_origin
+                existing_rm_code, existing_vendor, existing_country_origin = existing_rm_codes[index]
+
+                # Maintain consistency for rm_code if vendor & country_origin remain the same
+                if new_vendor == existing_vendor and new_country_origin == existing_country_origin:
+                    new_rm_code = existing_rm_code  # Retain old rm_code
+
+                # Update ingredient table with new values
+                row_update_query = (
+                    ingredient.update()
+                    .where(
+                        (ingredient.c.ing_item_code == ing_item_code) &
+                        (ingredient.c.rm_code == existing_rm_code)  # Ensure correct row update
                     )
-                    query1 = (
-                        declaration.update()
-                        .where(
-                            (declaration.c.ing_item_code == ing_item_code) &
-                            (declaration.c.rm_code == rm_code)
-                        )
-                    ).values(
-                        ing_item_code = global_update_data.pop("ing_item_code"),
-                        rm_code = row_update_data.pop("rm_code")
+                    .values(
+                        rm_code=new_rm_code,
+                        vendor=new_vendor,
+                        country_origin=new_country_origin,
+                        **row_update_data  # Update other fields
                     )
-                    await db.execute(query)
-                    await db.execute(query1)
+                )
+                await db.execute(row_update_query)
 
         await db.commit()
         return {"message": "Ingredient and vendor details updated successfully!"}
@@ -552,6 +563,7 @@ async def update_ingredient(
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @mainRouter.patch("/declaration/{ing_item_code}")
