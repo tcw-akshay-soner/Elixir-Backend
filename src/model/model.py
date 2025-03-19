@@ -68,6 +68,7 @@ class Ingredient(BaseModel):
     updated_at: Optional[datetime] = datetime.now(tz=IST)
 
 class GlobalUpdates(BaseModel):
+    ing_item_code: Optional[str] = None
     ing_name: Optional[str] = None
     cas_num: Optional[str] = None
     ec_num: Optional[str] = None
