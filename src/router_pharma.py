@@ -456,7 +456,7 @@ async def update_item(
 #         if not rm_codes:
 #             raise HTTPException(status_code=400, detail="RM codes are required.")
 #
-#         # Prepara only the data that is provided in the request
+#         # Prepare only the data that is provided in the request
 #         update_ing_data = {
 #             key: value for key, value in data.dict(exclude_unset=True).items()
 #             if value is not None
@@ -500,9 +500,9 @@ async def update_ingredient(
 ):
     try:
 
-        rmcodetest = select(ingredient.c.rm_code).where(ingredient.c.ing_item_code == ing_item_code)
-        resulttest = await db.execute(rmcodetest)
-        rm_codes = [row[0] for row in resulttest.fetchall()]
+        rmcode_test = select(ingredient.c.rm_code).where(ingredient.c.ing_item_code == ing_item_code)
+        result_test = await db.execute(rmcode_test)
+        rm_codes = [row[0] for row in result_test.fetchall()]
         # print(f"Rm Codes are : {rm_codes}")
         
         if not rm_codes:
@@ -533,7 +533,18 @@ async def update_ingredient(
                         )
                         .values(**row_update_data)
                     )
+                    query1 = (
+                        declaration.update()
+                        .where(
+                            (declaration.c.ing_item_code == ing_item_code) &
+                            (declaration.c.rm_code == rm_code)
+                        )
+                    ).values(
+                        ing_item_code = global_update_data.pop("ing_item_code"),
+                        rm_code = row_update_data.pop("rm_code")
+                    )
                     await db.execute(query)
+                    await db.execute(query1)
 
         await db.commit()
         return {"message": "Ingredient and vendor details updated successfully!"}
