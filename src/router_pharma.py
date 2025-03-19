@@ -555,8 +555,21 @@ async def update_ingredient(
                         **row_update_data  # Update other fields
                     )
                 )
+                
+                query = (
+                    declaration.update()
+                    .where(
+                        (declaration.c.ing_item_code == ing_item_code) &
+                        (declaration.c.rm_code == existing_rm_code)  # Ensure correct row update
+                    )
+                    .values(
+                        rm_code=new_rm_code
+                    )
+                )
+                
                 await db.execute(row_update_query)
-
+                await db.execute(query)
+                
         await db.commit()
         return {"message": "Ingredient and vendor details updated successfully!"}
 
