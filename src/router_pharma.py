@@ -499,6 +499,15 @@ async def update_ingredient(
         db: AsyncSession = Depends(get_db)
 ):
     try:
+
+        rmcodetest = select(ingredient.c.rm_code).where(ingredient.c.ing_item_code == ing_item_code)
+        resulttest = await db.execute(rmcodetest)
+        rm_codes = [row[0] for row in resulttest.fetchall()]
+        # print(f"Rm Codes are : {rm_codes}")
+        
+        if not rm_codes:
+            raise HTTPException(status_code=404, detail="Ingredient not found")
+        
         # Apply Global Updates (All rows where ing_item_code matches)
         if update_request.global_updates:
             global_update_data = update_request.global_updates.dict(exclude_unset=True)
@@ -512,19 +521,19 @@ async def update_ingredient(
 
         # Apply Row-Specific Updates
         if update_request.row_updates:
-            for row in update_request.row_updates:
-                row_update_data = row.dict(exclude_unset=True)
-                rm_code = row_update_data.pop("rm_code")  # Extract rm_code for condition
-
-                query = (
-                    ingredient.update()
-                    .where(
-                        (ingredient.c.ing_item_code == ing_item_code) &
-                        (ingredient.c.rm_code == rm_code)
+            for r,row in enumerate(update_request.row_updates):
+                    row_update_data = row.dict(exclude_unset=True)
+                    # rm_code = row_update_data.pop("rm_code")  # Extract rm_code for conditional update                
+                    rm_code = rm_codes[r]
+                    query = (
+                        ingredient.update()
+                        .where(
+                            (ingredient.c.ing_item_code == ing_item_code) &
+                            (ingredient.c.rm_code == rm_code)
+                        )
+                        .values(**row_update_data)
                     )
-                    .values(**row_update_data)
-                )
-                await db.execute(query)
+                    await db.execute(query)
 
         await db.commit()
         return {"message": "Ingredient and vendor details updated successfully!"}

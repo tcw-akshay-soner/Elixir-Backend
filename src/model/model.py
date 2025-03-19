@@ -83,7 +83,7 @@ class GlobalUpdates(BaseModel):
     updated_at: Optional[datetime] = datetime.now(tz=IST)
 
 class RowUpdates(BaseModel):  # 🔹 Fields that apply to specific rm_code
-    rm_code: str
+    rm_code: Optional[str] = None
     vendor: Optional[str] = None
     country_origin: Optional[str] = None
 
