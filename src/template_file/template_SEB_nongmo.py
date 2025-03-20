@@ -40,14 +40,26 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
     else:
         product_name_footer = product_name.replace(' ', '')
     ## Declaration Data ##
-    non_gmo = "Yes"
     declaration_data = await fetch_declaration_data(product_id)
-    for row in declaration_data:
-        if row["non_gmo"] == 'No':
-            non_gmo = "No"
+
+    classifications = {row["classification"] for row in declaration_data if row["non_gmo"] == "Yes"}
+    non_gmo = "No" if any(row["non_gmo"] == "No" for row in declaration_data) else "Yes"
+
+    if non_gmo == "No":
+        code = "01B0"
+    elif classifications == {"Enzymes"}:
+        code = "02A0"
+    elif classifications == {"Probiotics"}:
+        code = "02C0"
+    elif classifications == {"Enzymes", "Probiotics"}:
+        code = "02D0"
+
     # Dataset for product name
     # code = '01F0'       ## Alphabet Template Code Coming from Database
-    file_name = f"{company}_{product_name_footer}_NonGMO.pdf"
+    if code == '01B0':
+        file_name = f"{company}_{product_name_footer}_GMO Dec_01B0.pdf"
+    else:
+        file_name = f"{company}_{product_name_footer}_Non GMO_{code}.pdf"
     file_path = os.path.join(temp_dir, file_name)
     
     c = canvas.Canvas(file_path)    # Product Name From Database
@@ -94,29 +106,38 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
     ## Non-GMO statements
     y = y - lineSpacing * 3
     # Define the classification mappings as a dictionary
+    # classification_map = {
+    #     'Papain': ('STATEMENT ON NON-GMO STATUS OF PAPAIN',
+    #                """The plant sources of the enzyme proteins in this formulation are certified by the manufacturer to have been produced by using dried latex of Carica  papaya, which is derived from plant origin and hence have not been modified by the use of recombinant DNA technology (“Non-GMO”)."""),
+    #     'Probiotics': ('STATEMENT ON NON-GMO STATUS FOR PROBIOTICS',
+    #                    """The probiotic microorganisms in this formulation are certified by the manufacturer to be produced from non-GMO microorganisms."""),
+    #     'Microbial Enzymes': ('STATEMENT ON NON-GMO STATUS OF MICROBIAL ENZYMES',
+    #                          """The enzyme proteins in this formulation are certified by the manufacturer to be produced from non-GMO microorganisms."""),
+    #     'Bromelain': ('STATEMENT ON NON-GMO STATUS OF BROMELAIN',
+    #                   """The enzyme proteins in this formulation are derived from plant sources (specifically, pineapple stems) and are certified by the manufacturer as non-GMO, to the best of their knowledge."""),
+    #     'Animal-Derived': ('STATEMENT ON NON-GMO STATUS OF ANIMAL ORIGIN ENZYME(S)',
+    #                        """The above-mentioned product contains animal origin enzyme which does not contain any genetically modified material."""),
+    #     'Protein': ('STATEMENT ON NON-GMO STATUS',
+    #                 """The source of the proteins in this formulation are certified by the manufacturer to have been produced by using Vigna radiata flour, which is of plant origin. It has not been modified by the use of recombinant DNA technology (“Non-GMO”)."""),
+    #     'Pancreatin': ('STATEMENT ON NON-GMO STATUS OF PANCREATIN',
+    #                    """The above-mentioned product contains animal origin enzyme Pancreatin which does not contain any genetically modified material and is not produced from raw material of genetically modified origin."""),
+    #     'Other': ('STATEMENT ON NON-GMO STATUS',
+    #               """The probiotic microorganisms in this formulation are certified by the manufacturer to be produced from non-GMO microorganisms.""")
+    # }
+
     classification_map = {
-        'Papain': ('STATEMENT ON NON-GMO STATUS OF PAPAIN',
-                   """The plant sources of the enzyme proteins in this formulation are certified by the manufacturer to have been produced by using dried latex of Carica  papaya, which is derived from plant origin and hence have not been modified by the use of recombinant DNA technology (“Non-GMO”)."""),
-        'Probiotics': ('STATEMENT ON NON-GMO STATUS FOR PROBIOTICS',
-                       """The probiotic microorganisms in this formulation are certified by the manufacturer to be produced from non-GMO microorganisms."""),
-        'Microbial Enzymes': ('STATEMENT ON NON-GMO STATUS OF MICROBIAL ENZYMES',
-                             """The enzyme proteins in this formulation are certified by the manufacturer to be produced from non-GMO microorganisms."""),
-        'Bromelain': ('STATEMENT ON NON-GMO STATUS OF BROMELAIN',
-                      """The enzyme proteins in this formulation are derived from plant sources (specifically, pineapple stems) and are certified by the manufacturer as non-GMO, to the best of their knowledge."""),
-        'Animal-Derived': ('STATEMENT ON NON-GMO STATUS OF ANIMAL ORIGIN ENZYME(S)',
-                           """The above-mentioned product contains animal origin enzyme which does not contain any genetically modified material."""),
-        'Protein': ('STATEMENT ON NON-GMO STATUS',
-                    """The source of the proteins in this formulation are certified by the manufacturer to have been produced by using Vigna radiata flour, which is of plant origin. It has not been modified by the use of recombinant DNA technology (“Non-GMO”)."""),
-        'Pancreatin': ('STATEMENT ON NON-GMO STATUS OF PANCREATIN',
-                       """The above-mentioned product contains animal origin enzyme Pancreatin which does not contain any genetically modified material and is not produced from raw material of genetically modified origin."""),
-        'Other': ('STATEMENT ON NON-GMO STATUS',
-                  """The probiotic microorganisms in this formulation are certified by the manufacturer to be produced from non-GMO microorganisms.""")
+        'Enzymes': ('STATEMENT ON NON-GMO STATUS OF ENZYMES',
+                    """The enzyme proteins in this formulation are certified by the manufacturer to be produced from 
+                    non-GMO microorganisms or non-GMO plant source or non-GMO animals."""),
+        'Probiotics': ('STATEMENT ON NON-GMO STATUS OF PROBIOTICS',
+                       """The probiotic microorganisms in this formulation are certified by the manufacturer to be 
+                       produced from non-GMO microorganisms.""")
     }
 
     # Initialize the combined classification set
     combined_classification = set()
     # Sort the classification_map by keys
-    sorted_classification_map = dict(sorted(classification_map.items()))
+    # sorted_classification_map = dict(sorted(classification_map.items()))
 
     if non_gmo == "Yes":
         for row in declaration_data:
@@ -129,7 +150,7 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
         combined_classification.add(gmo)
 
     # Convert the set to a sorted list based on the original key order
-    combined_classification = [entry for key, entry in sorted_classification_map.items() if entry in combined_classification]
+    # combined_classification = [entry for key, entry in sorted_classification_map.items() if entry in combined_classification]
 
     for title, content in combined_classification:        # Iteration for title and content in text data according to the code provided
         # Set title font color to black
@@ -164,7 +185,7 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
     if non_gmo == 'No':
         c.drawRightString(w - 30, pfh + 6, f'{product_name_footer}_GMO Dec_01B0')
     else:
-        c.drawRightString(w - 30, pfh + 6, f'{product_name_footer}_nonGMO')
+        c.drawRightString(w - 30, pfh + 6, f'{product_name_footer}_Non GMO_{code}')
 
     c.showPage()
     c.save()
