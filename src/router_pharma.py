@@ -1,4 +1,5 @@
 # Import necessary modules
+import logging
 from datetime import datetime
 from functools import partial
 from fastapi import FastAPI, HTTPException, Depends, APIRouter, Query
@@ -285,8 +286,8 @@ async def read_all_ingredient_data(db: AsyncSession = Depends(get_db)):
         query = select(ingredient, declaration).join(
             declaration,
             and_(
-            declaration.c.ing_item_code == ingredient.c.ing_item_code,
-            declaration.c.rm_code == ingredient.c.rm_code),
+                declaration.c.ing_item_code == ingredient.c.ing_item_code,
+                declaration.c.rm_code == ingredient.c.rm_code),
             isouter=True  # LEFT JOIN
         ).distinct()
         result = await db.execute(query)
@@ -355,7 +356,7 @@ async def fetch_declaration_data(
 
 @mainRouter.patch("/item/{product_id}")
 async def update_item(
-        product_id: str, data: Items, data1: Product,db: AsyncSession = Depends(get_db)
+        product_id: str, data: Items, data1: Product, db: AsyncSession = Depends(get_db)
 ):
     try:
         # Updating Product Table
@@ -501,8 +502,8 @@ async def update_ingredient(
     try:
         # Fetch existing rows for the ingredient
         rmcode_query = select(
-            ingredient.c.rm_code, 
-            ingredient.c.vendor, 
+            ingredient.c.rm_code,
+            ingredient.c.vendor,
             ingredient.c.country_origin
         ).where(ingredient.c.ing_item_code == ing_item_code)
 
@@ -512,7 +513,7 @@ async def update_ingredient(
 
         if not existing_rm_codes:
             raise HTTPException(status_code=404, detail="Ingredient not found")
-        
+
         # Apply Global Updates (affects all rows with the same ing_item_code)
         if update_request.global_updates:
             global_update_data = update_request.global_updates.dict(exclude_unset=True)
@@ -523,6 +524,12 @@ async def update_ingredient(
                     .values(**global_update_data)
                 )
                 await db.execute(global_update_query)
+                query2 = (
+                    declaration.update()
+                    .where(declaration.c.ing_item_code == ing_item_code)
+                    .values(ing_item_code=global_update_data.pop("ing_item_code", ing_item_code))
+                )
+                await db.execute(query2)
 
         # Apply Row-Specific Updates (updates individual rows)
         if update_request.row_updates:
@@ -538,8 +545,8 @@ async def update_ingredient(
                 existing_rm_code, existing_vendor, existing_country_origin = existing_rm_codes[index]
 
                 # Maintain consistency for rm_code if vendor & country_origin remain the same
-                if new_vendor == existing_vendor and new_country_origin == existing_country_origin:
-                    new_rm_code = existing_rm_code  # Retain old rm_code
+                # if new_vendor == existing_vendor and new_country_origin == existing_country_origin:
+                #     new_rm_code = existing_rm_code  # Retain old rm_code
 
                 # Update ingredient table with new values
                 row_update_query = (
@@ -555,7 +562,7 @@ async def update_ingredient(
                         **row_update_data  # Update other fields
                     )
                 )
-                
+
                 query = (
                     declaration.update()
                     .where(
@@ -566,17 +573,16 @@ async def update_ingredient(
                         rm_code=new_rm_code
                     )
                 )
-                
+
                 await db.execute(row_update_query)
                 await db.execute(query)
-                
+
         await db.commit()
         return {"message": "Ingredient and vendor details updated successfully!"}
 
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @mainRouter.patch("/declaration/{ing_item_code}")
