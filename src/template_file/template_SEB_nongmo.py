@@ -76,7 +76,10 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
     ## Product Section
     y = y - lineSpacing * 4
     # Placeholder for product name
-    if symbol_id == 1 or symbol_id == 4:
+    if symbol_id == 0:
+        c.setFont('Cambria-Bold', 30)
+        c.drawRightString(w - 30, y, product_name.replace(chr(int(symbol_code, 16)), ''))
+    elif symbol_id == 1 or symbol_id == 4:
         c.setFont('Cambria-Bold', 30)
         c.drawRightString(w - 30, y, product_name)
     else:
@@ -172,8 +175,8 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
                                     justifyBreaks=1,
                                     justifyLastLine=0,
                                     leading=15,
-                                    leftIndent=50,
-                                    rightIndent=50)
+                                    leftIndent=30,
+                                    rightIndent=30)
         p = Paragraph(content, style_normal)
         p_width, p_height = p.wrap(w, h)        # Wrap the text to avoid overflow by reducing the available width
         p.drawOn(c, 0, y - p_height)        # Adjusting the Y-position to ensure proper alignment

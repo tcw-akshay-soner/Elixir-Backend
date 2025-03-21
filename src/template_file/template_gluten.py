@@ -83,7 +83,10 @@ async def create_template_gluten(date,temp_dir, company, product_id):
     ## Product Section
     y = y - lineSpacing * 4
     # Placeholder for product name
-    if symbol_id == 1 or symbol_id == 4:
+    if symbol_id == 0:
+        c.setFont('Cambria-Bold', 30)
+        c.drawRightString(w - 30, y, product_name.replace(chr(int(symbol_code, 16)), ''))
+    elif symbol_id == 1 or symbol_id == 4:
         c.setFont('Cambria-Bold', 30)
         c.drawRightString(w - 30, y, product_name)
     else:

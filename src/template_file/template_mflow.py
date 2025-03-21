@@ -52,7 +52,12 @@ async def create_template_mflow(date, temp_dir, company, product_id):
     # Title
     y = y - lineSpacing * 2
     # Placeholder for product name
-    if symbol_id == 1 or symbol_id == 4:
+    if symbol_id == 0:
+        product_name = product_name.replace(chr(int(symbol_code, 16)), '')
+        text = f"{product_name} - Manufacturing Flow Chart"
+        c.setFont('Cambria-Bold', 14)
+        c.drawCentredString(w / 2, y, text)
+    elif symbol_id == 1 or symbol_id == 4:
         text = f"{product_name} - Manufacturing Flow Chart"
         c.setFont('Cambria-Bold', 14)
         c.drawCentredString(w / 2, y, text)

@@ -133,15 +133,18 @@ async def create_template_allergen(date, temp_dir, company, product_id):
     ### BODY TEXT SECTION ###
     ## TABLE ##
     ## Allergen alphabet table according to code '01A0', '01B0'...
-    if symbol_id == 1 or symbol_id == 4:
+    if symbol_id == 0:
         c.setFont('Cambria-Bold', 12)
-        c.drawString(50, y, product_name)
+        c.drawString(50, y, f"Product: {product_name.replace(chr(int(symbol_code, 16)), '')}")
+    elif symbol_id == 1 or symbol_id == 4:
+        c.setFont('Cambria-Bold', 12)
+        c.drawString(50, y, f"Product: {product_name}")
     else:
         # text = product_name
         text_object = c.beginText(50, y)
         product_name = product_name.replace(chr(int(symbol_code, 16)), '')
         text_object.setFont("Cambria-Bold", 12)
-        text_object.textOut(product_name)
+        text_object.textOut(f"Product: {product_name}")
         text_object.setRise(6)
         text_object.setFont("Cambria-Bold", 12)
         text_object.textOut(symbol)

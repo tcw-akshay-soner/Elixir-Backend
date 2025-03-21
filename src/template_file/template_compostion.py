@@ -75,8 +75,30 @@ async def create_template_composition(date, temp_dir, company, product_id):
 
     ## Product Name Display
     y -= line_spacing * 4
-    c.setFont('Cambria-Bold', 30)
-    c.drawRightString(w - 30, y, product_name)
+    if symbol_id == 0:
+        c.setFont('Cambria-Bold', 30)
+        c.drawRightString(w - 30, y, product_name.replace(chr(int(symbol_code, 16)), ''))
+    elif symbol_id == 1 or symbol_id == 4:
+        c.setFont('Cambria-Bold', 30)
+        c.drawRightString(w - 30, y, product_name)
+    else:
+        text = product_name
+        width = c.stringWidth(text, "Cambria-Bold", 30)
+        charSpace = 0
+        wordSpace = None
+        if charSpace:
+            width += (len(text) - 1) * charSpace
+        if wordSpace:
+            width += (text.count(u' ') + text.count(u'\xa0') - 1) * wordSpace
+        text_object = c.beginText(w - 30 - width, y)
+        product_name = product_name.replace(chr(int(symbol_code, 16)), '')
+        text_object.setFont("Cambria-Bold", 30)
+        text_object.textOut(product_name)
+        text_object.setRise(6)
+        text_object.setFont("Cambria-Bold", 30)
+        text_object.textOut(symbol)
+        text_object.setRise(0)
+        c.drawText(text_object)
 
     y -= line_spacing
     c.setFont('Cambria-Regular', 10)

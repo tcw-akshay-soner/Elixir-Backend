@@ -68,7 +68,10 @@ async def create_template_edible(date, temp_dir, company, product_id):
     y = y - lineSpacing * 4
     # c.setFont('Times-Roman', 20)
     # # c.drawRightString(w - 30, y, chr(int(symbol_code, 16)))
-    if symbol_id == 1 or symbol_id == 4:
+    if symbol_id == 0:
+        c.setFont('Cambria-Bold', 30)
+        c.drawRightString(w - 30, y, product_name.replace(chr(int(symbol_code, 16)), ''))
+    elif symbol_id == 1 or symbol_id == 4:
         c.setFont('Cambria-Bold', 30)
         c.drawRightString(w - 30, y, product_name)  # Placeholder for product name # Placeholder for symbol name
     else:
