@@ -364,6 +364,7 @@ async def update_item(
             product.update()
             .where(product.c.product_id == product_id)
             .values(
+                product_id=data1.product_id,
                 product_name=data1.product_name,
                 symbol_id=data1.symbol_id,
                 identified_uses=data1.identified_uses,
