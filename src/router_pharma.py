@@ -336,24 +336,6 @@ async def fetch_declaration_data(
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# @mainRouter.delete("/product/{product_id}")
-# async def delete_product(product_id: str, db: AsyncSession = Depends(get_db)):
-#     try:
-#         # Query to delete a product by item_code
-#         query = product.delete().where(product.c.product_id == product_id)
-#         result = await db.execute(query)
-
-#         # If no rows were deleted, the item_code doesn't exist
-#         if result.rowcount == 0:
-#             raise HTTPException(status_code = 404, detail = f"Product {product_id} not found")
-
-#         await db.commit()
-#         return {"message": f"Product {product_id} deleted successfully!"}
-#     except SQLAlchemyError as e:
-#         await db.rollback()
-#         raise HTTPException(status_code = 500, detail = str(e))
-
 @mainRouter.patch("/item/{product_id}")
 async def update_item(
         product_id: str, data: Items, data1: Product, db: AsyncSession = Depends(get_db)
@@ -387,7 +369,7 @@ async def update_item(
         # Inserting updated ingredient list
         new_ingredients = [
             {
-                "product_id": product_id,
+                "product_id": data1.product_id,
                 "ing_item_code": ingredient.ing_item_code,
                 "seq_no": ingredient.seq_no,
                 "ing_name": ingredient.ing_name,
@@ -409,88 +391,6 @@ async def update_item(
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-# @mainRouter.patch("/ingredient/{ing_item_code}")  # update ingredient table by ingredient item code and rm code
-# async def update_ingredient(ing_item_code: str, rm_code: List[str], data: Ingredient, db: AsyncSession = Depends(get_db)):
-#     try:
-#         # Query to update an ingredient by ingredient_item_code and rm_code
-#         query = (
-#             ingredient.update()
-#             .where(
-#                 (ingredient.c.ing_item_code == ing_item_code) &
-#                 (ingredient.c.rm_code == rm_code)
-#             )
-#             .values(
-#                 cas_num=data.cas_num,
-#                 ec_num=data.ec_num,
-#                 ing_type=data.ing_type,
-#                 source_type=data.source_type,
-#                 source=data.source,
-#                 country_origin=data.country_origin,
-#                 updated_at=data.updated_at
-#             )
-#         )
-#         result = await db.execute(query)
-
-#         # If no rows were updated, the combination of ing_item_code and rm_code doesn't exist
-#         if result.rowcount == 0:
-#             raise HTTPException(status_code=404, detail=f"Ingredient {ing_item_code} with RM code {rm_code} not found")
-
-#         await db.commit()
-#         return {"message": f"Ingredient {ing_item_code} updated successfully!"}
-#     except SQLAlchemyError as e:
-#         await db.rollback()
-#         raise HTTPException(status_code=500, detail=str(e))
-
-
-# @mainRouter.patch("/ingredient/{ing_item_code}")  # update ingredient table by ingredient item code and rm code
-# async def update_ingredient(
-#         ing_item_code: str,
-#         rm_codes: List[str] = Query([], description="List of RM codes"),
-#         data: IngredientUpdate = Depends(),
-#         db: AsyncSession = Depends(get_db)
-# ):
-#     try:
-#         if not rm_codes:
-#             raise HTTPException(status_code=400, detail="RM codes are required.")
-#
-#         # Prepare only the data that is provided in the request
-#         update_ing_data = {
-#             key: value for key, value in data.dict(exclude_unset=True).items()
-#             if value is not None
-#         }
-#
-#         if not update_ing_data:
-#             raise HTTPException(status_code=400, detail="No valid update data provided.")
-#
-#         # Ensure `ing_item_code` and `rm_code` are NOT being updated
-#         if "ing_item_code" in update_ing_data or "rm_code" in update_ing_data:
-#             raise HTTPException(status_code=400,
-#                                 detail="(Duplicate Data, data exist) Cannot update primary key fields (ing_item_code, rm_code).")
-#
-#         # Query to update an ingredient by ingredient_item_code and rm_code
-#         query = (
-#             ingredient.update()
-#             .where(
-#                 (ingredient.c.ing_item_code == ing_item_code) &
-#                 ingredient.c.rm_code.in_(rm_codes)
-#             )
-#             .values(**update_ing_data)
-#         )
-#
-#         result = await db.execute(query)
-#         await db.commit()
-#
-#         # If no rows were updated, the combination of ing_item_code and rm_code doesn't exist
-#         if result.rowcount == 0:
-#             raise HTTPException(status_code=404, detail=f"Ingredient {ing_item_code} with RM code {rm_codes} not found")
-#
-#         return {"message": f"Ingredient {ing_item_code} and declaration updated successfully!"}
-#     except SQLAlchemyError as e:
-#         await db.rollback()
-#         raise HTTPException(status_code=500, detail=str(e))
 
 @mainRouter.patch("/ingredient/{ing_item_code}")
 async def update_ingredient(
