@@ -106,7 +106,7 @@ async def create_template_allergen(date, temp_dir, company, product_id):
         c.line(30, y, 565, y)
     elif company == 'EI':
         c.drawImage('src/data/eiLogo.png', 30, 730, mask=mask, height=90, width=270)
-        y = h - 70 - lineSpacing
+        y = h - 80 - lineSpacing
         c.setFont('Cambria-Regular', 14)
         c.setFillColorRGB(0.7, 0.7, 0.7, 0.7)
         c.drawRightString(w - 50, y, "Proprietary and Confidential")
