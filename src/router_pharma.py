@@ -364,7 +364,6 @@ async def update_item(
             product.update()
             .where(product.c.product_id == product_id)
             .values(
-                product_id=data1.product_id,
                 product_name=data1.product_name,
                 symbol_id=data1.symbol_id,
                 identified_uses=data1.identified_uses,
@@ -372,45 +371,44 @@ async def update_item(
                 appearance=data1.appearance,
                 color=data1.color,
                 updated_at=data1.updated_at
-            ))
+            )
+        )
         result = await db.execute(product_update_query)
 
-        # If the product does not exist, return an error
+        # If product does not exist
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
-        # Updating the list of ingredients
-        for ingredient in data.ingredients:
-            ingredient_update_query = (
-                items.update()
-                .where(
-                    (items.c.product_id == product_id) &
-                    (items.c.ing_item_code == ingredient.ing_item_code)
-                )
-                .values(
-                    product_id=data1.product_id,
-                    ing_item_code=ingredient.ing_item_code,
-                    seq_no=ingredient.seq_no,
-                    ing_name=ingredient.ing_name,
-                    per_composition=ingredient.per_composition,
-                    other_ing=ingredient.other_ing,
-                    alpha_composition=ingredient.alpha_composition,
-                    updated_at=data.updated_at
-                )
-            )
-            result = await db.execute(ingredient_update_query)
 
-            # If the ingredient does not exist, return an error or optionally create it
-            if result.rowcount == 0:
-                raise HTTPException(status_code=404,
-                                    detail=f"Ingredient {ingredient.ing_item_code} not found for product {product_id}")
+        # Deleting existing ingredients for the product
+        delete_ingredients_query = items.delete().where(items.c.product_id == product_id)
+        await db.execute(delete_ingredients_query)
+
+        # Inserting updated ingredient list
+        new_ingredients = [
+            {
+                "product_id": product_id,
+                "ing_item_code": ingredient.ing_item_code,
+                "seq_no": ingredient.seq_no,
+                "ing_name": ingredient.ing_name,
+                "per_composition": ingredient.per_composition,
+                "other_ing": ingredient.other_ing,
+                "alpha_composition": ingredient.alpha_composition,
+                "updated_at": data.updated_at
+            }
+            for ingredient in data.ingredients
+        ]
+
+        if new_ingredients:
+            await db.execute(items.insert().values(new_ingredients))
 
         # Commit the transaction
         await db.commit()
-        return {"message": f"Product with product id : {product_id} updated successfully!"}
+        return {"message": f"Product with product_id {product_id} updated successfully!"}
 
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 # @mainRouter.patch("/ingredient/{ing_item_code}")  # update ingredient table by ingredient item code and rm code
