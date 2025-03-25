@@ -99,17 +99,17 @@ async def create_template_allergen(date, temp_dir, company, product_id):
         y = h - 70 - lineSpacing
         c.setFont('Cambria-Regular', 14)
         c.setFillColorRGB(0.7, 0.7, 0.7, 0.7)
-        c.drawRightString(w - 60, y, "Proprietary and Confidential")
+        c.drawRightString(w - 50, y, "Proprietary and Confidential")
         y = y - lineSpacing
         ## Header Line
         c.setStrokeColorRGB(0.5, 0.5, 0.5, 0.3)
         c.line(30, y, 565, y)
     elif company == 'EI':
-        c.drawImage('src/data/eiLogo.png', 30, 750, mask=mask, height=100, width=290)
+        c.drawImage('src/data/eiLogo.png', 30, 730, mask=mask, height=90, width=270)
         y = h - 70 - lineSpacing
         c.setFont('Cambria-Regular', 14)
         c.setFillColorRGB(0.7, 0.7, 0.7, 0.7)
-        c.drawRightString(w - 60, y, "Proprietary and Confidential")
+        c.drawRightString(w - 50, y, "Proprietary and Confidential")
         y = y - lineSpacing
     ### HEADER ###
 
@@ -128,7 +128,7 @@ async def create_template_allergen(date, temp_dir, company, product_id):
     ## Date
     y = y - lineSpacing * 2
     c.setFont("Cambria-Regular", 12)
-    c.drawRightString(w - 60, y, date)
+    c.drawRightString(w - 50, y, date)
 
     ### BODY TEXT SECTION ###
     ## TABLE ##
