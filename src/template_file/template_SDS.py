@@ -207,8 +207,10 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
     }
     # Sections with dynamic and static content
     if company == 'EI':
+        product_name_footer = f'{data["product_name"]}_SDS_02B0'
         sections = ei_section_data(data, prepare_custom_styles)
     elif company == 'SEB':
+        product_name_footer = f'{data["product_name"]}_SDS_01B0'
         sections = seb_section_data(data, prepare_custom_styles)
 
     # Prepare custom styles
@@ -303,7 +305,7 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
         ('FONTSIZE', (0, 0), (-1, -1), 12),
         ('ALIGN', (0, 0), (0, 0), 'LEFT'),
         ('ALIGN', (1, 0), (1, 0), 'RIGHT')])
-    footer_data = [[f'Preparation {date}', data["product_name"]]]
+    footer_data = [[f'Preparation {date}', product_name_footer]]
     table = Table(footer_data, colWidths=[210, 280], style=table_style)
     content.append(table)
     # content.append(Paragraph(f"Preparation {date}", styles["LeftAligned"]))
