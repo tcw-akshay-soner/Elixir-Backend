@@ -191,7 +191,7 @@ async def create_template_ppr(date, temp_dir, company, product_id, temp):
     elif temp == "preservative":
         c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Preservative_01A0")
     elif temp == "residual solvent":
-        c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Residual_Solvent_02A0")
+        c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Residual Solvent_02A0")
     elif temp == "wada":
         c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_WADA_01A0")
     c.showPage()
