@@ -122,11 +122,19 @@ async def create_template_composition(date, temp_dir, company, product_id):
     bullet_indent = 30
     line_spacing = 15
     x = 100
-    y = 470
+    y = 500
     if len(ingredients) > 1:
         ingredients = ingredients.split(',')
     maltodextrin = False
     fos = False
+
+    style1 = ParagraphStyle("txt",
+                            fontName="Cambria-Bold",
+                            fontSize=10,
+                            leading=12,
+                            spaceBefore=10,
+                            spaceAfter=4
+                            )
     for i in ingredients:  # Iteration through ingredients list
         # if i == 'Maltodextrin':
         #     maltodextrin = True
@@ -134,7 +142,7 @@ async def create_template_composition(date, temp_dir, company, product_id):
         # elif i == 'FOS':
         #     fos = True
         #     continue
-        p = Paragraph(i, stylesheet['Heading4'], bulletText='•')  # Including Paragraph in canvas with bullet text
+        p = Paragraph(i, style1, bulletText='•')  # Including Paragraph in canvas with bullet text
         w, h = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
         p.drawOn(c, x + bullet_indent, y)  # Adjusting the Y-position to ensure proper alignment
         y -= line_spacing
