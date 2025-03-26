@@ -207,16 +207,16 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
     }
     # Sections with dynamic and static content
     if company == 'EI':
-        product_name_footer = f'{data["product_name"]}_SDS_02B0'
+        product_name_footer = f'{product_name_footer}_SDS_02B0'
         sections = ei_section_data(data, prepare_custom_styles)
     elif company == 'SEB':
-        product_name_footer = f'{data["product_name"]}_SDS_01B0'
+        product_name_footer = f'{product_name_footer}_SDS_01B0'
         sections = seb_section_data(data, prepare_custom_styles)
 
     # Prepare custom styles
     styles = prepare_custom_styles()
     # File setup
-    file_name = f"{company}_{product_name_footer}_SDS.pdf"
+    file_name = f"{company}_{product_name_footer}.pdf"
     file_path = os.path.join(temp_dir, file_name)
     # Create a BaseDocTemplate and PageTemplate
     doc = BaseDocTemplate(file_path, pagesize=A4)
