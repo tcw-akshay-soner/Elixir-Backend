@@ -190,7 +190,7 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     c.setFont('Cambria-Regular', 8)
     # c.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
     c.setFillColorRGB(0, 0, 0, 1)
-    c.drawRightString(w - 30, pfh + 3, f"{product_name}_%Composition_01A0")
+    c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_%Composition_01A0")
     c.showPage()
     c.save()
 
