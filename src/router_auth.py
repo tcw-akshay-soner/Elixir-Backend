@@ -203,7 +203,7 @@ async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
     
     if remaining_time >= 5 * 60 and access_user == user.role:
         return JSONResponse(content={"message": "Access token is still valid", "expires_in": remaining_time})
-    elif access_user != user.role:
+    elif remaining_time >= 5 * 60 and access_user != user.role:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Role Mismatch/Changed")
 
     # if access_expiry > current_time > 5 * 60:
