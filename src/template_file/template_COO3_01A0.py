@@ -55,7 +55,8 @@ async def create_template_COO3(date, temp_dir, company, product_id):
 
     # maltodextrin = any(row['ing_name'] == 'Maltodextrin' for row in ingredient_data)
     # fos = any(row['ing_name'] == 'FOS' for row in ingredient_data)
-    others = set()
+    others = {}
+
     ## Create a Dictionary for ingredient name
     ingredient_countries = {}
     for row in ingredient_data:
@@ -63,7 +64,8 @@ async def create_template_COO3(date, temp_dir, company, product_id):
         other_ingredient = row['other_ing']
         ingredient_name = row['ing_name']
         if other_ingredient:
-            others.add(row['ing_name'])
+            other_name = row['ing_name']
+            others.setdefault(other_name, set()).add(row['source'])
             # logger.info(f'Adding {row["ing_name"]} to others')
             continue
         # if ingredient_name in ['Maltodextrin', 'FOS']:
@@ -77,6 +79,11 @@ async def create_template_COO3(date, temp_dir, company, product_id):
     for ingredient, countries in ingredient_countries.items():
         combined_country_data = "/".join(countries)
         dataset.append([ingredient, combined_country_data])
+
+    other_data = {}
+    # Fixing "Other Ingredients" Section
+    other_data = {key: f"{key} (from {', '.join(sorted(value))})" for key, value in others.items()}
+    others_data = list(other_data.values())
     # logger.info(f'others {others}')
     w, h = A4
     lineSpacing = 20
@@ -178,8 +185,8 @@ async def create_template_COO3(date, temp_dir, company, product_id):
                                  alignment=TA_CENTER,
                                  leftIndent=0)
 
-    if others:
-        text = "<b>Other ingredients:</b> Product standardized in a base of " + ", ".join(others)
+    if others_data:
+        text = "<b>Other ingredients:</b> Product standardized in a base of " + ", ".join(others_data)
         p = Paragraph(text.strip(), style_other)
         p.wrapOn(c, w, h)
         p.drawOn(c, 0, y - h)

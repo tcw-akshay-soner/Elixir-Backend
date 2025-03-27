@@ -63,13 +63,14 @@ async def create_template_COS(date, temp_dir, company, product_id):
 
     # maltodextrin = any(row['ing_name'] == 'Maltodextrin' for row in ingredient_data)
     # fos = any(row['ing_name'] == 'FOS' for row in ingredient_data)
-    others = set()
+    others = {}
     for row in ingredient_data:
         # logger.info(f"Other Ingredient {row['other_ing']}")
         other_ingredient = row['other_ing']
         ingredient_name = row['ing_name']
         if other_ingredient:
-            others.add(row['ing_name'])
+            other_name = row['ing_name']
+            others.setdefault(other_name, set()).add(row['source'])
             # logger.info(f'Adding {row["ing_name"]} to others')
             continue
         # if ingredient_name in ['Maltodextrin', 'FOS']:
@@ -84,6 +85,11 @@ async def create_template_COS(date, temp_dir, company, product_id):
     for ingredient, sources in ingredient_source.items():
         combined_source_data = " / ".join(sorted(sources))
         dataset.append([ingredient, Paragraph(combined_source_data, source_style)])
+
+    other_data = {}
+    # Fixing "Other Ingredients" Section
+    other_data = {key: f"{key} (from {', '.join(sorted(value))})" for key, value in others.items()}
+    others_data = list(other_data.values())
 
     w, h = A4
     lineSpacing = 20
@@ -175,8 +181,8 @@ async def create_template_COS(date, temp_dir, company, product_id):
                                  alignment=TA_CENTER,
                                  liftindent=0)
 
-    if others:
-        text = "<b>Other ingredients:</b> Product standardized in a base of " + ", ".join(others)
+    if others_data:
+        text = "<b>Other ingredients:</b> Product standardized in a base of " + ", ".join(others_data)
         p = Paragraph(text.strip(), style_other)
         p.wrapOn(c, w, h)
         p.drawOn(c, 0, y - h)

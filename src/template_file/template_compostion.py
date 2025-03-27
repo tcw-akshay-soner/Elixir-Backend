@@ -8,7 +8,7 @@ from reportlab.platypus import Paragraph
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-from src.engine.pharma_data import fetch_product, fetch_composition
+from src.engine.pharma_data import fetch_product, fetch_composition, fetch_ingredient_data
 from src.template_file import letterhead
 
 from rich.logging import RichHandler
@@ -44,13 +44,15 @@ async def create_template_composition(date, temp_dir, company, product_id):
 
     ## Fetch Composition Data ##
     ingredients = []
-    composition = await fetch_composition(product_id)
-    others = set()
-    for row in composition:
+    # composition = await fetch_composition(product_id)
+    ing_data = await fetch_ingredient_data(product_id)
+    others = {}
+    for row in ing_data:
         logger.info(f"Other Ingredient {row['other_ing']}")
         other_ingredient = row['other_ing']
         if other_ingredient:
-            others.add(row['ing_name'])
+            other_name = row['ing_name']
+            others.setdefault(other_name, set()).add(row['source'])
             # logger.info(f'Adding {row["ing_name"]} to others')
             continue
         if row['ing_name'] not in ingredients:
@@ -58,6 +60,10 @@ async def create_template_composition(date, temp_dir, company, product_id):
         logger.info(row['ing_name'])
     ingredients = ",".join(ingredients)
     logger.info(ingredients)
+    other_data = {}
+    # Fixing "Other Ingredients" Section
+    other_data = {key: f"{key} (from {', '.join(sorted(value))})" for key, value in others.items()}
+    others_data = list(other_data.values())
 
     w, h = A4
     line_spacing = 20
@@ -148,8 +154,8 @@ async def create_template_composition(date, temp_dir, company, product_id):
         y -= line_spacing
 
     # Draw special ingredients section if present
-    if others:
-        text = f"<b>Other ingredients:</b> Product standardized in a base of {', '.join(others)}"
+    if others_data:
+        text = f"<b>Other ingredients:</b> Product standardized in a base of {', '.join(others_data)}"
         style_other = ParagraphStyle("Other_Text",
                                      fontName="Cambria-Italic",
                                      fontSize=8,

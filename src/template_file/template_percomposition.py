@@ -8,7 +8,7 @@ from reportlab.platypus import Paragraph, Table, TableStyle
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-from src.engine.pharma_data import fetch_product, fetch_composition
+from src.engine.pharma_data import fetch_product, fetch_composition, fetch_ingredient_data
 from src.template_file import letterhead
 
 # Set up logging
@@ -51,14 +51,15 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     composition = Paragraph('<u>% COMPOSITION</u>', style=header_style)
     ## Composition Data ##
     dataset = [[ingredient, composition]]
-    composition = await fetch_composition(product_id)
-    # maltodextrin = False
-    # fos = False
-    others = set()
-    for row in composition:
+    # composition = await fetch_composition(product_id)
+    ing_data = await fetch_ingredient_data(product_id)
+
+    others = {}
+    for row in ing_data:
         other_ingredient = row['other_ing']
         if other_ingredient:
-            others.add(row['ing_name'])
+            other_name = row['ing_name']
+            others.setdefault(other_name, set()).add(row['source'])
             # logger.info(f'Adding {row["ing_name"]} to others')
             continue
         # if row['ing_name'] == 'Maltodextrin':
@@ -68,6 +69,11 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
         #     fos = True
         #     continue
         dataset.append([row['ing_name'], row['alpha_composition']])
+
+    other_data = {}
+    # Fixing "Other Ingredients" Section
+    other_data = {key: f"{key} (from {', '.join(sorted(value))})" for key, value in others.items()}
+    others_data = list(other_data.values())
 
     file_name = f"{company}_{product_name_footer}_perComposition_01A0.pdf"
     file_path = os.path.join(temp_dir, file_name)
@@ -163,8 +169,8 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
                                 strikeColor=0.4,
                                 alignment=TA_CENTER)
 
-    if others:
-        text = "<b>Other ingredients:</b> Product standardized in a base of " + ", ".join(others)
+    if others_data:
+        text = "<b>Other ingredients:</b> Product standardized in a base of " + ", ".join(others_data)
         p = Paragraph(text.strip(), style_other)
         p.wrapOn(c, w, h)
         p.drawOn(c, 0, y - h)
