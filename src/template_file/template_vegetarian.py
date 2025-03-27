@@ -1,5 +1,5 @@
-import logging, os
-
+import logging
+import os
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_JUSTIFY
 from reportlab.pdfgen import canvas
@@ -10,18 +10,38 @@ from reportlab.platypus import Paragraph
 from src.template_file import letterhead
 from src.engine.pharma_data import fetch_product, fetch_declaration_data
 
-stylesheet = getSampleStyleSheet()
-
-logging.basicConfig(level=logging.INFO)
+from rich.logging import RichHandler
+import warnings
+# Configure RichHandler
+logging.basicConfig(
+        level="DEBUG",
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True)]
+)
 logger = logging.getLogger(__name__)
+
+stylesheet = getSampleStyleSheet()
+warnings.filterwarnings('ignore')
 
 
 async def create_template_vegetarian(date, temp_dir, company, product_id):
 
-    data = await fetch_product(product_id)
-    product_name = data[0]['product_name'] if data else "N/A"
-    
-    file_name = f"{company}_{product_name}_Vegetarian_02A0.pdf"
+    product_data = await fetch_product(product_id)
+    # product_name = data[0]['product_name'] if data else "N/A"
+    for row in product_data:
+        product_name = row['product_name']
+        symbol_id = row['symbol_id']
+        symbol_code = row['symbol_code']
+        # symbol_name = row['symbol_name']
+        symbol = row['symbol']
+
+    if symbol_id:
+        product_name_footer = product_name.replace(' ', '').replace(chr(int(symbol_code, 16)), '')
+    else:
+        product_name_footer = product_name.replace(' ', '')
+
+    file_name = f"{company}_{product_name_footer}_Vegetarian_02A0.pdf"
     file_path = os.path.join(temp_dir, file_name)
     
     ## Declaration Data ##
@@ -46,10 +66,34 @@ async def create_template_vegetarian(date, temp_dir, company, product_id):
     c.drawRightString(w - 30, y, date)
 
     ## Product Section
-    y = y - 30
-
-    c.setFont('Cambria-Bold', 25)
-    c.drawRightString(w - 30, y, product_name)  # Placeholder for product name
+    y = y - 40
+    # c.setFont('Cambria-Bold', 25)
+    # c.drawRightString(w - 30, y, product_name)  # Placeholder for product name
+    # Placeholder for product name
+    if symbol_id == 0:
+        c.setFont('Cambria-Bold', 30)
+        c.drawRightString(w - 30, y, product_name.replace(chr(int(symbol_code, 16)), ''))
+    elif symbol_id == 1 or symbol_id == 4:
+        c.setFont('Cambria-Bold', 25)
+        c.drawRightString(w - 30, y, product_name)
+    else:
+        text = product_name
+        width = c.stringWidth(text, "Cambria-Bold", 25)
+        charSpace = 0
+        wordSpace = None
+        if charSpace:
+            width += (len(text) - 1) * charSpace
+        if wordSpace:
+            width += (text.count(u' ') + text.count(u'\xa0') - 1) * wordSpace
+        text_object = c.beginText(w - 30 - width, y)
+        product_name = product_name.replace(chr(int(symbol_code, 16)), '')
+        text_object.setFont("Cambria-Bold", 25)
+        text_object.textOut(product_name)
+        text_object.setRise(6)
+        text_object.setFont("Cambria-Bold", 25)
+        text_object.textOut(symbol)
+        text_object.setRise(0)
+        c.drawText(text_object)
 
     y = y - lineSpacing
     c.setFont('Cambria-Regular', 10)
@@ -57,7 +101,7 @@ async def create_template_vegetarian(date, temp_dir, company, product_id):
     c.drawRightString(w - 30, y, "Proprietary and Confidential")
 
     ## Title
-    y = y - lineSpacing
+    y = y - lineSpacing*2
     c.setFillColorRGB(0, 0, 0, 1)
     c.setFont("Cambria-Bold", 14)
     title = "VEGETARIAN STATEMENT"
@@ -68,7 +112,7 @@ async def create_template_vegetarian(date, temp_dir, company, product_id):
     x = (w / 2) - (text_width / 2)
     c.setStrokeColorRGB(0, 0, 0, 1)
     c.line(x, y - 16 * 0.2, x + text_width, y - 16 * 0.2)
-    y = y - lineSpacing * 2
+    y = y - lineSpacing
 
     ### BODY TEXT SECTION ###
     style_body = ParagraphStyle("Body_Text",
@@ -133,11 +177,11 @@ async def create_template_vegetarian(date, temp_dir, company, product_id):
         pb.drawOn(c, 0, y - pbh)  # Adjusting the Y-position to ensure proper alignment
         y = y - pbh
 
-    product_name = product_name.replace(" ","")
     c.setFont('Cambria-Regular', 8)
-    c.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
+    # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
+    c.setFillColorRGB(0, 0, 0, 1)
 
-    c.drawRightString(w - 30, pfh + 3, f"{product_name}_Vegetarian_02A0")
+    c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Vegetarian_02A0")
     c.showPage()
     c.save()
     

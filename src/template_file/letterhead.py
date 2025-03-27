@@ -33,22 +33,22 @@ def header_footer(c, company):
         c.line(30, 100, 565, 100)
 
         style_footer = ParagraphStyle("footer",
-                                    fontName="Cambria-Regular",
-                                    fontSize=8,
-                                    textColor=colors.grey,
-                                    alignment=TA_JUSTIFY,
-                                    justifyBreaks=1,
-                                    justifyLastLine=0,
-                                    leftIndent=30,
-                                    rightIndent=30,
-                                    strikeColor=0.4)
+                                      fontName="Cambria-Regular",
+                                      fontSize=8,
+                                      textColor=colors.black,
+                                      alignment=TA_JUSTIFY,
+                                      justifyBreaks=1,
+                                      justifyLastLine=0,
+                                      leftIndent=30,
+                                      rightIndent=30,
+                                      strikeColor=0.4)
 
-        footer_text = "The information is presented in good faith as of the date set forth herein and " \
-                    "valid for one year, and we assume no obligation to update this<br/>statement. " \
-                    "Nothing herein is intended as legal or regulatory advice. " \
-                    "The information herein is presented solely for your independent<br/>consideration, review and verification. " \
-                    "This statement does not constitute a representation or warranty regarding the product, and " \
-                    "we shall have<br/>no liability regarding this statement or your use of the information contained herein."
+        footer_text = """The information is presented in good faith as of the date set forth herein and valid for one 
+        year, and we assume no obligation to update this statement. Nothing herein is intended as legal or 
+        regulatory advice. The information herein is presented solely for your independent consideration, 
+        review and verification. This statement does not constitute a representation or warranty regarding the 
+        product, and we shall have no liability regarding this statement or your use of the information contained 
+        herein."""
 
         p = Paragraph(footer_text, style_footer)
         pfw, pfh = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
@@ -73,22 +73,22 @@ def header_footer(c, company):
 
         c.setFillColorRGB(0, 0, 0, 1)
         style_footer = ParagraphStyle("footer",
-                                    fontName="Cambria-Regular",
-                                    fontSize=8,
-                                    textColor=colors.black,
-                                    alignment=TA_JUSTIFY,
-                                    justifyBreaks=1,
-                                    justifyLastLine=0,
-                                    leftIndent=30,
-                                    rightIndent=30,
-                                    )
+                                      fontName="Cambria-Regular",
+                                      fontSize=8,
+                                      textColor=colors.black,
+                                      alignment=TA_JUSTIFY,
+                                      justifyBreaks=1,
+                                      justifyLastLine=0,
+                                      leftIndent=30,
+                                      rightIndent=30,
+                                      )
 
-        footer_text = "The information is presented in good faith as of the date set forth herein and " \
-                    "valid for one year, and we assume no obligation to update this<br/>statement. " \
-                    "Nothing herein is intended as legal or regulatory advice. " \
-                    "The information herein is presented solely for your independent<br/>consideration, review and verification. " \
-                    "This statement does not constitute a representation or warranty regarding the product, and " \
-                    "we shall have<br/>no liability regarding this statement or your use of the information contained herein."
+        footer_text = """The information is presented in good faith as of the date set forth herein and valid for one 
+        year, and we assume no obligation to update this statement. Nothing herein is intended as legal or 
+        regulatory advice. The information herein is presented solely for your independent consideration, 
+        review and verification. This statement does not constitute a representation or warranty regarding the 
+        product, and we shall have no liability regarding this statement or your use of the information contained 
+        herein."""
 
         p = Paragraph(footer_text, style_footer)
         pfw, pfh = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width

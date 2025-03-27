@@ -1,13 +1,13 @@
-import sys, yaml
-from fastapi import FastAPI, Request, Depends
+import sys
+import yaml
+from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from fastapi.responses import Response
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
-from src import router_pharma
-from src.connection.cognito import get_current_user
-from typing import Dict
+from src import router_pharma, router_auth
+# from src.connection.cognito import get_current_user
 from dotenv import load_dotenv
 from src.engine.font import register_font_family, cambria_fonts
 
@@ -15,15 +15,29 @@ load_dotenv()
 
 sys.setrecursionlimit(sys.getrecursionlimit() * 5)
 
-app = FastAPI()
+app = FastAPI(  
+    title="Pharma API",
+    version="2.5.0",
+    description="This is the Pharma API for the Pharma project",
+    openapi_url="/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    # dependencies=[Depends(get_current_user)]
+)
+
+AllOWED_ORIGINS = [
+    "https://elixir-test-zeta.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:8000",
+]
 
 # CORS Middleware with AWS Cognito support
 app.add_middleware(
     CORSMiddleware, 
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins = AllOWED_ORIGINS,
+    allow_credentials = True,
+    allow_methods = ["*"],
+    allow_headers = ["*"],
 )
 
 # Add Sentry Middleware
@@ -31,7 +45,8 @@ app.add_middleware(SentryAsgiMiddleware)
 
 # Include the router for pharma-related endpoints and secure endpoints with aws cognito
 # app.include_router(router_pharma.get_router(), prefix="/elixir", dependencies = [Depends(get_current_user)])
-app.include_router(router_pharma.get_router(), prefix="/elixir")
+app.include_router(router_auth.get_router(), prefix="/auth", tags=["Pharma Auth"])
+app.include_router(router_pharma.get_router(), prefix="/elixir", tags=["Pharma"])
 
 @app.on_event("startup")
 async def font():

@@ -1,6 +1,8 @@
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
+from rich import print
 
+# Register the Cambria font family
 def register_font_family(font_name: str, font_paths: dict):
     """
     Register a font family with ReportLab.
@@ -8,7 +10,7 @@ def register_font_family(font_name: str, font_paths: dict):
     Args:
         font_name (str): The base name for the font family.
         font_paths (dict): A dictionary with keys `regular`, `bold`, `italic`, and `bold_italic`
-                           mapping to the paths of the respective font files.
+        mapping to the paths of the respective font files.
     """
     try:
         # Register individual font styles
