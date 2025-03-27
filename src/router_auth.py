@@ -185,7 +185,7 @@ async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
     access_token = request.cookies.get("access_token")
     
     if not refresh_token and not access_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Tokens not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Please Login to Continue")
 
     # Extract access token payload and expiry time
     access_payload = verify_token(access_token)
@@ -195,7 +195,7 @@ async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
     # Fetch user details from db
     user = await get_user_by_email(db, email=access_payload.get("email"))
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User details not found")
     
     # Check if access token expires in the next 5 minutes, 
     current_time = datetime.now(timezone.utc).timestamp()
