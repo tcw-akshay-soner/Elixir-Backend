@@ -190,13 +190,21 @@ async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
     # Extract access token payload and expiry time
     access_payload = verify_token(access_token)
     access_expiry = access_payload.get("exp")
+    access_user = access_payload.get("role")
+    
+    # Fetch user details from db
+    user = await get_user_by_email(db, email=access_payload.get("email"))
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     
     # Check if access token expires in the next 5 minutes, 
     current_time = datetime.now(timezone.utc).timestamp()
     remaining_time = access_expiry - current_time
     
-    if remaining_time >= 5 * 60:
+    if remaining_time >= 5 * 60 and access_user == user.role:
         return JSONResponse(content={"message": "Access token is still valid", "expires_in": remaining_time})
+    elif access_user != user.role:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Role Mismatch/Changed")
 
     # if access_expiry > current_time > 5 * 60:
     #     return JSONResponse(content={"message": "Access token is stil valid"})
