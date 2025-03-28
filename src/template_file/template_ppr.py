@@ -89,7 +89,7 @@ async def create_template_ppr(date, temp_dir, company, product_id, temp):
         # Check preservative compliance
         preservative = await check_compliance(declaration_data, 'preservative')
         if preservative:
-            raise ValueError("Data Not Provided by the Vendor")
+            raise ValueError("File Generation Failed Due to Preservative Presence.")
     # elif temp == 'packaging':
     #     packaging = await check_compliance(declaration_data, 'packaging')
     #     if packaging:

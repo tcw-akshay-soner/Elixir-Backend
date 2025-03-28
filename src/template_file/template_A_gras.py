@@ -46,10 +46,9 @@ async def create_template_gras(date, temp_dir, company, product_id):
 
     for row in declaration_data:
         if row["gras"] == "No":
-            return ValueError("File Generation Failed due to 'One or More Ingredient doesn't pass Food Safety.'")
+            raise ValueError("File Generation Failed due to 'One or More Ingredient doesn't pass Food Safety.'")
         elif row["gras"] == "NA":
-            return ValueError("File Generation Failed due insufficent data")
-
+            raise ValueError("File Generation Failed due insufficent data")
     c = canvas.Canvas(file_path)  # Product Name From Database
 
     w, h = A4
