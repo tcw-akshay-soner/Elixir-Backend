@@ -181,68 +181,72 @@ async def create_user(user: model.UserCreate, db: AsyncSession = Depends(get_db)
 
 @auth_router.post("/refresh")
 async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
-    refresh_token = request.cookies.get("refresh_token")
-    access_token = request.cookies.get("access_token")
-    
-    if not refresh_token and not access_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Please Login to Continue")
+    try:
+        refresh_token = request.cookies.get("refresh_token")
+        access_token = request.cookies.get("access_token")
+        
+        if not refresh_token and not access_token:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Please Login to Continue")
 
-    # Extract access token payload and expiry time
-    access_payload = verify_token(access_token)
-    access_expiry = access_payload.get("exp")
-    access_user = access_payload.get("role")
-    
-    # Fetch user details from db
-    user = await get_user_by_email(db, email=access_payload.get("email"))
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User details not found")
-    
-    # Check if access token expires in the next 5 minutes, 
-    current_time = datetime.now(timezone.utc).timestamp()
-    remaining_time = access_expiry - current_time
-    
-    if remaining_time >= 5 * 60 and access_user == user.role:
-        return JSONResponse(content={"message": "Access token is still valid", "expires_in": remaining_time})
-    elif remaining_time >= 5 * 60 and access_user != user.role:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Role Mismatch/Changed")
+        # Extract access token payload and expiry time
+        access_payload = verify_token(access_token)
+        access_expiry = access_payload.get("exp")
+        access_user = access_payload.get("role")
+        
+        # Fetch user details from db
+        user = await get_user_by_email(db, email=access_payload.get("email"))
+        if not user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User details not found")
+        
+        # Check if access token expires in the next 5 minutes, 
+        current_time = datetime.now(timezone.utc).timestamp()
+        remaining_time = access_expiry - current_time
+        
+        if remaining_time >= 5 * 60 and access_user == user.role:
+            return JSONResponse(content={"message": "Access token is still valid", "expires_in": remaining_time})
+        elif remaining_time >= 5 * 60 and access_user != user.role:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Role Mismatch/Changed")
 
-    # if access_expiry > current_time > 5 * 60:
-    #     return JSONResponse(content={"message": "Access token is stil valid"})
-    
-    # Verify refresh token and get user details
-    refresh_payload = verify_refresh_token(refresh_token, access_token)
-    refresh_expiry = refresh_payload.get("exp")
-    email = refresh_payload.get("email")
-    
-    if refresh_expiry < current_time:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired")
+        # if access_expiry > current_time > 5 * 60:
+        #     return JSONResponse(content={"message": "Access token is stil valid"})
+        
+        # Verify refresh token and get user details
+        refresh_payload = verify_refresh_token(refresh_token, access_token)
+        refresh_expiry = refresh_payload.get("exp")
+        email = refresh_payload.get("email")
+        
+        if refresh_expiry < current_time:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired")
 
-    stmt = select(schemas.User).where(schemas.User.email == email)
-    result = await db.execute(stmt)
-    user = result.scalars().first()
-    
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        stmt = select(schemas.User).where(schemas.User.email == email)
+        result = await db.execute(stmt)
+        user = result.scalars().first()
+        
+        if not user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-    # Generate new tokens
-    new_access_token, new_access_expiry = await create_access_token(user)
-    
-    response_data = {
-        "message": "Access Token refreshed",
-        "access_token_expires_in": int(new_access_expiry - current_time)
-    }
+        # Generate new tokens
+        new_access_token, new_access_expiry = await create_access_token(user)
+        
+        response_data = {
+            "message": "Access Token refreshed",
+            "access_token_expires_in": int(new_access_expiry - current_time)
+        }
 
-    response = JSONResponse(content=response_data)
-    response.set_cookie("access_token", new_access_token, httponly=True, secure=True, samesite="None", max_age=60 * 60)
+        response = JSONResponse(content=response_data)
+        response.set_cookie("access_token", new_access_token, httponly=True, secure=True, samesite="None", max_age=60 * 60)
 
-    # Generate new refresh token only if it's about to expire (within 5 minutes)
-    refresh_lifespan = 60 * 60 * 24  # Assuming 24 hours (modify as per your config)
-    if refresh_expiry - current_time <= 5 * 60:  # If refresh token has ≤5 minutes left
-        new_refresh_token, new_refresh_expiry = await create_refresh_token(user)
-        response.set_cookie("refresh_token", new_refresh_token, httponly=True, secure=True, samesite="None", max_age=refresh_lifespan)
-        response_data["refresh_token_expires_in"] = int(new_refresh_expiry - current_time)
+        # Generate new refresh token only if it's about to expire (within 5 minutes)
+        refresh_lifespan = 60 * 60 * 24  # Assuming 24 hours (modify as per your config)
+        if refresh_expiry - current_time <= 5 * 60:  # If refresh token has ≤5 minutes left
+            new_refresh_token, new_refresh_expiry = await create_refresh_token(user)
+            response.set_cookie("refresh_token", new_refresh_token, httponly=True, secure=True, samesite="None", max_age=refresh_lifespan)
+            response_data["refresh_token_expires_in"] = int(new_refresh_expiry - current_time)
 
-    return response
+        return response
+    except Exception as e:
+        logger.error(f"Error refreshing token: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error refreshing token: {str(e)}")
 
 
 # Fetch all user from db

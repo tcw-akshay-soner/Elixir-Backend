@@ -1,18 +1,21 @@
-# Use an official Python runtime as a parent image
-FROM python:3.12
+# ✅ Correct Syntax for Python Image
+FROM python:3.12 
 
-# Set the working directory in the container
-WORKDIR /
+# Set working directory
+WORKDIR /app
 
-# Copy the project files into the container
-COPY . .
+# Copy only requirements first (for caching)
+COPY requirements.txt .
 
 # Install dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Expose the FastAPI port (default: 8000)
+# Copy all FastAPI project files
+COPY . .
+
+# Expose FastAPI port
 EXPOSE 8095
 
-# Command to run the FastAPI app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8095"]
+# Run FastAPI app
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8095", "--workers", "4"]
