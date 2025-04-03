@@ -143,7 +143,7 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
     # Initialize the combined classification set
     combined_classification = set()
     # Sort the classification_map by keys
-    # sorted_classification_map = dict(sorted(classification_map.items()))
+    sorted_classification_map = dict(sorted(classification_map.items()))
 
     if non_gmo == "Yes":
         for row in declaration_data:
@@ -156,7 +156,7 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
         combined_classification.add(gmo)
 
     # Convert the set to a sorted list based on the original key order
-    # combined_classification = [entry for key, entry in sorted_classification_map.items() if entry in combined_classification]
+    combined_classification = [entry for key, entry in sorted_classification_map.items() if entry in combined_classification]
 
     for title, content in combined_classification:        # Iteration for title and content in text data according to the code provided
         # Set title font color to black
