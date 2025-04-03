@@ -47,12 +47,15 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
 
     if non_gmo == "No":
         code = "01B0"
-    elif classifications == {"Enzymes"}:
-        code = "02A0"
-    elif classifications == {"Probiotics"}:
-        code = "02C0"
-    elif classifications == {"Enzymes", "Probiotics"}:
-        code = "02D0"
+    else:
+        if {"Enzymes", "Probiotics"}.issubset(classifications):  # Check if both are present
+            code = "02D0"
+        elif {"Enzymes"}.issubset(classifications):
+            code = "02A0"
+        elif {"Probiotics"}.issubset(classifications):
+            code = "02C0"
+        else:
+            code = None  # Or some default code if none match
 
     # Dataset for product name
     # code = '01F0'       ## Alphabet Template Code Coming from Database

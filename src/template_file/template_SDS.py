@@ -207,7 +207,7 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
     }
     # Sections with dynamic and static content
     if company == 'EI':
-        product_name_footer = f'{product_name_footer}_SDS_02B0'
+        product_name_footer = f'{product_name_footer}_SDS_01B0'
         sections = ei_section_data(data, prepare_custom_styles)
     elif company == 'SEB':
         product_name_footer = f'{product_name_footer}_SDS_01B0'
