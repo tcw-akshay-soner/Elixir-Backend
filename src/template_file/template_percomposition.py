@@ -55,8 +55,11 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     ing_data = await fetch_ingredient_data(product_id)
 
     others = {}
+
+    ingredients_compositions = {}
     for row in ing_data:
         other_ingredient = row['other_ing']
+        ingredient_name = row['ing_name']
         if other_ingredient:
             other_name = row['ing_name']
             others.setdefault(other_name, set()).add(row['source'])
@@ -68,7 +71,17 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
         # elif row['ing_name'] == 'FOS':
         #     fos = True
         #     continue
-        dataset.append([row['ing_name'], row['alpha_composition']])
+        if ingredient_name in ingredients_compositions:
+            ingredients_compositions[ingredient_name].add(row['alpha_composition'])
+        else:
+            ingredients_compositions[ingredient_name] = {row['alpha_composition']}
+        # dataset.append([row['ing_name'], row['alpha_composition']])
+
+    ## Iterate Through the Collected Data
+    combined_composition_data = set()
+    for ingredient, compositions in ingredients_compositions.items():
+        combined_composition_data = "/".join(compositions)
+        dataset.append([ingredient, combined_composition_data])
 
     other_data = {}
     # Fixing "Other Ingredients" Section

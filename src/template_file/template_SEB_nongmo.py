@@ -47,12 +47,15 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
 
     if non_gmo == "No":
         code = "01B0"
-    elif classifications == {"Enzymes"}:
-        code = "02A0"
-    elif classifications == {"Probiotics"}:
-        code = "02C0"
-    elif classifications == {"Enzymes", "Probiotics"}:
-        code = "02D0"
+    else:
+        if {"Enzymes", "Probiotics"}.issubset(classifications):  # Check if both are present
+            code = "02D0"
+        elif {"Enzymes"}.issubset(classifications):
+            code = "02A0"
+        elif {"Probiotics"}.issubset(classifications):
+            code = "02C0"
+        else:
+            code = None  # Or some default code if none match
 
     # Dataset for product name
     # code = '01F0'       ## Alphabet Template Code Coming from Database
@@ -140,7 +143,7 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
     # Initialize the combined classification set
     combined_classification = set()
     # Sort the classification_map by keys
-    # sorted_classification_map = dict(sorted(classification_map.items()))
+    sorted_classification_map = dict(sorted(classification_map.items()))
 
     if non_gmo == "Yes":
         for row in declaration_data:
@@ -153,7 +156,7 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
         combined_classification.add(gmo)
 
     # Convert the set to a sorted list based on the original key order
-    # combined_classification = [entry for key, entry in sorted_classification_map.items() if entry in combined_classification]
+    combined_classification = [entry for key, entry in sorted_classification_map.items() if entry in combined_classification]
 
     for title, content in combined_classification:        # Iteration for title and content in text data according to the code provided
         # Set title font color to black

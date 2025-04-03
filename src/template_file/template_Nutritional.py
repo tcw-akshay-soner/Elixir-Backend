@@ -1,6 +1,7 @@
 import warnings
 import logging
 import os
+from decimal import Decimal, ROUND_DOWN
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_JUSTIFY, TA_LEFT
@@ -46,7 +47,9 @@ async def create_template_nutritional(date, temp_dir, company, product_id):
 
     total_calories = total_protein = total_fat = total_carbohydrates = total_moisture = total_ash = 0
     ingredient_data = await fetch_ingredient_data(product_id)
-    for row in ingredient_data:
+    unique_ingredients = {row['ing_item_code']: row for row in ingredient_data}.values()
+
+    for row in unique_ingredients:
         per_composition = row['per_composition'] / 100  # Precompute percentage factor
 
         total_calories += per_composition * row['calories']
@@ -127,16 +130,17 @@ async def create_template_nutritional(date, temp_dir, company, product_id):
     nutrient = Paragraph('<b>Nutrient</b>', style=header_style)
     amount_per_100g = Paragraph('<b>Amount</b><br/>Per 100g', header_style)
     amount_per_serving = Paragraph('<b>Amount</b><br/>Per Serving(1gm)', header_style)
+
     ## Composition Data ##
     data = [[nutrient, amount_per_100g, amount_per_serving],  # Header row
-            ["Calories", f"{total_calories:.2f}", f"{total_calories / 100:.2f}"],
-            ["Fat – Total (g)", f"{total_fat:.2f}", f"{total_fat / 100:.2f}"],
-            ["Carbohydrates (g)", f"{total_carbohydrates:.2f}", f"{total_carbohydrates / 100:.2f}"],
+            ["Calories", f"{total_calories:.2f}", f"{(Decimal(total_calories) / Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_DOWN)}"],
+            ["Fat – Total (g)", f"{total_fat:.2f}", f"{(Decimal(total_fat) / Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_DOWN)}"],
+            ["Carbohydrates (g)", f"{total_carbohydrates:.2f}", f"{(Decimal(total_carbohydrates) / Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_DOWN)}"],
             ["Dietary Fiber (g)", "negligible", "negligible"],  # Fixed Value
             ["Added Sugars (g)", "N/A", "N/A"],  # Fixed Value
-            ["Protein (g)", f"{total_protein:.2f}", f"{total_protein / 100:.2f}"],
-            ["Moisture (g)", f"{total_moisture:.2f}", f"{total_moisture / 100:.2f}"],
-            ["Ash (g)", f"{total_ash:.2f}", f"{total_ash / 100:.2f}"], ]
+            ["Protein (g)", f"{total_protein:.2f}", f"{(Decimal(total_protein) / Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_DOWN)}"],
+            ["Moisture (g)", f"{total_moisture:.2f}", f"{(Decimal(total_moisture) / Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_DOWN)}"],
+            ["Ash (g)", f"{total_ash:.2f}", f"{(Decimal(total_ash) / Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_DOWN)}"], ]
     # data = [['Nutrient', 'Amount\nPer 100g', 'Amount\nPer Serving(1gm)']]
     table_style = TableStyle([('GRID', (0, 0), (-1, -1), 1, colors.black),
                               # ('GRID', (0, 0), (0, -1), 1, colors.black),
