@@ -35,7 +35,12 @@ async def create_template_mflow(date, temp_dir, company, product_id):
         # symbol_name = row['symbol_name']
         symbol = row['symbol']
 
-    file_name = f"{company}_MFlow chart_01A0.pdf"
+    if symbol_id:
+        product_name_footer = product_name.replace(' ', '').replace(chr(int(symbol_code, 16)), '')
+    else:
+        product_name_footer = product_name.replace(' ', '')
+
+    file_name = f"{company}_{product_name_footer}_MFlow chart_01A0.pdf"
     file_path = os.path.join(temp_dir, file_name)
 
     w, h = A4
@@ -102,7 +107,7 @@ async def create_template_mflow(date, temp_dir, company, product_id):
     c.setFont('Cambria-Regular', 8)
     # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
     c.setFillColorRGB(0, 0, 0, 1)
-    c.drawRightString(w - 30, pfh + 6, f"{company}_MFlow Chart_01A0")
+    c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_MFlow Chart_01A0")
     c.showPage()
     c.save()
 

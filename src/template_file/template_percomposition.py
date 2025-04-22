@@ -53,7 +53,10 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     dataset = [[ingredient, composition]]
     # composition = await fetch_composition(product_id)
     ing_data = await fetch_ingredient_data(product_id)
-
+    ing_style = ParagraphStyle('ing_style',
+                               fontName='Cambria-Regular',
+                               fontSize=10,
+                               alignment=TA_LEFT)
     others = {}
 
     ingredients_compositions = {}
@@ -81,14 +84,14 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     combined_composition_data = set()
     for ingredient, compositions in ingredients_compositions.items():
         combined_composition_data = "/".join(compositions)
-        dataset.append([ingredient, combined_composition_data])
+        dataset.append([Paragraph(ingredient, ing_style), combined_composition_data])
 
     other_data = {}
     # Fixing "Other Ingredients" Section
     other_data = {key: f"{key} (from {', '.join(sorted(value))})" for key, value in others.items()}
     others_data = list(other_data.values())
 
-    file_name = f"{company}_{product_name_footer}_perComposition_01A0.pdf"
+    file_name = f"{company}_{product_name_footer}_%Composition_01A0.pdf"
     file_path = os.path.join(temp_dir, file_name)
     c = canvas.Canvas(file_path)
     c, y, pfh = letterhead.header_footer(c, company)

@@ -3,6 +3,7 @@ from reportlab.platypus import (
     BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, Table, TableStyle, Flowable, Image
 )
 
+
 # from src.template_file.template_SDS import prepare_custom_styles
 
 
@@ -203,14 +204,22 @@ def seb_section_data(product_data, prepare_custom_styles):
         # SECTION 10: Stability and Reactivity
         "SECTION 10 – STABILITY AND REACTIVITY": [{
             "subsection_title": "",
-            "content": [
-                ("<b>10.1</b> Reactivity", "Data not relevant"),
-                ("<b>10.2</b> Chemical Stability", "Stable under recommended conditions"),
-                ("<b>10.3</b> Possibility of hazardous reaction", "N/A under recommended conditions"),
-                ("<b>10.4</b> Conditions to avoid", "See section 5 and 7"),
-                ("<b>10.5</b> Incompatible Materials", "No special recommendations"),
-                ("<b>10.6</b> Hazardous decomposition products", "No data available."),
-            ]
+            "content": Table([
+                [Paragraph("<b>10.1</b> &nbsp;&nbsp;Reactivity", prepare_custom_styles()['secheading']), ":",
+                 Paragraph("Data not relevant", prepare_custom_styles()['RightAligned'])],
+                [Paragraph("<b>10.2</b> &nbsp;&nbsp;Chemical Stability", prepare_custom_styles()['secheading']), ":",
+                 Paragraph("Stable under recommended conditions", prepare_custom_styles()['RightAligned'])],
+                [Paragraph("<b>10.3</b> &nbsp;&nbsp;Possibility of hazardous reaction",
+                           prepare_custom_styles()['secheading']), ":",
+                 Paragraph("N/A under recommended conditions", prepare_custom_styles()['RightAligned'])],
+                [Paragraph("<b>10.4</b> &nbsp;&nbsp;Conditions to avoid", prepare_custom_styles()['secheading']), ":",
+                 Paragraph("See section 5 and 7", prepare_custom_styles()['RightAligned'])],
+                [Paragraph("<b>10.5</b> &nbsp;&nbsp;Incompatible Materials", prepare_custom_styles()['secheading']),
+                 ":", Paragraph("No special recommendations", prepare_custom_styles()['RightAligned'])],
+                [Paragraph("<b>10.6</b> &nbsp;&nbsp;Hazardous decomposition products",
+                           prepare_custom_styles()['secheading']), ":",
+                 Paragraph("No data available.", prepare_custom_styles()['RightAligned'])],
+            ], colWidths=[260, 15, 270])
         }],
 
         # SECTION 11: Toxicological Information
@@ -238,13 +247,19 @@ def seb_section_data(product_data, prepare_custom_styles):
         # SECTION 12: Ecological Information
         "SECTION 12 – ECOLOGICAL INFORMATION": [{
             "subsection_title": "",
-            "content": [
-                ("<b>12.1</b> Toxicity", "No data available"),
-                ("<b>12.2</b> Persistence and degradability", "No data available"),
-                ("<b>12.3</b> Bioaccumulative potential", "No data available"),
-                ("<b>12.4</b> Mobility in soil", "No data available"),
-                ("<b>12.5</b> Other adverse effects", "No data available"),
-            ]
+            "content": Table([
+                [Paragraph("<b>12.1</b> &nbsp;&nbsp;Toxicity", prepare_custom_styles()['secheading']), ":",
+                 Paragraph("No data available", prepare_custom_styles()['RightAligned'])],
+                [Paragraph("<b>12.2</b> &nbsp;&nbsp;Persistence and degradability",
+                           prepare_custom_styles()['secheading']), ":",
+                 Paragraph("No data available", prepare_custom_styles()['RightAligned'])],
+                [Paragraph("<b>12.3</b> &nbsp;&nbsp;Bioaccumulative potential", prepare_custom_styles()['secheading']),
+                 ":", Paragraph("No data available", prepare_custom_styles()['RightAligned'])],
+                [Paragraph("<b>12.4</b> &nbsp;&nbsp;Mobility in soil", prepare_custom_styles()['secheading']), ":",
+                 Paragraph("No data available", prepare_custom_styles()['RightAligned'])],
+                [Paragraph("<b>12.5</b> &nbsp;&nbsp;Other adverse effects", prepare_custom_styles()['secheading']), ":",
+                 Paragraph("No data available", prepare_custom_styles()['RightAligned'])],
+            ], colWidths=[260, 15, 270])
         }],
         #
         # SECTION 13: Disposal Considerations
@@ -292,5 +307,5 @@ def seb_section_data(product_data, prepare_custom_styles):
                                      "liability for any damage resulting from handling or contact with the above "
                                      "product.  See the Company’s confirmation of purchase order for additional terms "
                                      "and conditions of sale.", prepare_custom_styles()['justify'])
-            },],
+            }, ],
     }

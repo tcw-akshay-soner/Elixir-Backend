@@ -47,6 +47,7 @@ ingredient = Table(
     metadata,
     Column("ing_item_code", String, primary_key=True, nullable=False),
     Column("ing_name", String, nullable=False),
+    Column("symbol_id", Integer, ForeignKey("symbols.symbol_id"), nullable=True),
     Column("vendor", String, nullable=False),
     Column("rm_code", String, primary_key=True, nullable=False),
     Column("cas_num", String, nullable=True),

@@ -60,7 +60,10 @@ async def create_template_COS(date, temp_dir, company, product_id):
                                   fontName='Cambria-Regular',
                                   fontSize=10,
                                   alignment=TA_LEFT)
-
+    ing_style = ParagraphStyle('ing_style',
+                               fontName='Cambria-Regular',
+                               fontSize=10,
+                               alignment=TA_LEFT)
     # maltodextrin = any(row['ing_name'] == 'Maltodextrin' for row in ingredient_data)
     # fos = any(row['ing_name'] == 'FOS' for row in ingredient_data)
     others = {}
@@ -84,7 +87,7 @@ async def create_template_COS(date, temp_dir, company, product_id):
 
     for ingredient, sources in ingredient_source.items():
         combined_source_data = " / ".join(sorted(sources))
-        dataset.append([ingredient, Paragraph(combined_source_data, source_style)])
+        dataset.append([Paragraph(ingredient, ing_style), Paragraph(combined_source_data, source_style)])
 
     other_data = {}
     # Fixing "Other Ingredients" Section

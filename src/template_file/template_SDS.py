@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import datetime
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import (
@@ -11,19 +12,19 @@ from src.data.seb_sds_data import seb_section_data as seb_section_data
 from src.data.ei_sds_data import ei_section_data as ei_section_data
 from src.engine.pharma_data import fetch_ingredient_data, fetch_product
 
-
 from rich.logging import RichHandler
 import warnings
 
 # Configure RichHandler
 logging.basicConfig(
-        level="DEBUG",
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[RichHandler(rich_tracebacks=True)]
+    level="DEBUG",
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True)]
 )
 logger = logging.getLogger(__name__)
 warnings.filterwarnings('ignore')
+
 
 def prepare_custom_styles():
     """
@@ -74,6 +75,12 @@ def prepare_custom_styles():
             fontSize=12,
             alignment=TA_LEFT,
             leading=14
+        ),
+        "secheading": ParagraphStyle(
+            name="secheading",
+            fontName="Cambria-Regular",
+            fontSize=12,
+            alignment=TA_LEFT,
         ),
         "justify": ParagraphStyle(
             name="justify",
@@ -144,7 +151,7 @@ def header_footer(canvas, doc, company):
     elif company == "EI":
         mask = [0, 2, 40, 42, 136, 139]
         canvas.drawImage('src/data/EI_only_logo.jpg', 30, h - 70, mask=mask, height=50, width=240)
-        canvas.drawImage('src/data/EI_add.png', 400 , h-70, mask=mask, height=40, width=150)
+        canvas.drawImage('src/data/EI_add.png', 400, h - 70, mask=mask, height=40, width=150)
         canvas.setFillColorRGB(0.7, 0.7, 0.7, 1)
         canvas.setFont("Cambria-Bold", 12)
         canvas.drawCentredString(w / 2, h - 90, "SAFETY DATA SHEET")
@@ -162,6 +169,7 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
     """
     Generate the SDS PDF dynamically based on product and compliance data.
     """
+    date = datetime.now().strftime('%B, %Y')
     product_data = await fetch_product(product_id)
     ingredient_data = await fetch_ingredient_data(product_id)
     for row in product_data:
@@ -245,11 +253,20 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
                     content.append(Spacer(1, 8))
                     content.append(Paragraph(f"{subsection['subsection_title']}", styles["Heading"]))
                     content.append(Spacer(1, 8))
+
+                # Fetching prefixes for the subsection
+                target_prefixes = tuple(f"10.{i}" for i in range(1, 7)) + tuple(f"12.{i}" for i in range(1, 6))
+
                 # Render subsection content
                 subsection_content = subsection["content"]
                 if isinstance(subsection_content, Paragraph):
                     content.append(subsection_content)
                 elif isinstance(subsection_content, Table):
+                    subsection_content.setStyle(TableStyle([
+                        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                        ('FONTNAME', (1, 0), (1, -1), 'Cambria-Regular'),
+                        ('FONTSIZE', (1, 0), (1, -1), 12)]))
                     content.append(subsection_content)
                 else:
                     table_data = []
@@ -305,7 +322,7 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
         ('FONTSIZE', (0, 0), (-1, -1), 12),
         ('ALIGN', (0, 0), (0, 0), 'LEFT'),
         ('ALIGN', (1, 0), (1, 0), 'RIGHT')])
-    footer_data = [[f'Preparation {date}', product_name_footer]]
+    footer_data = [[f'Preparation - {date}', product_name_footer]]
     table = Table(footer_data, colWidths=[210, 280], style=table_style)
     content.append(table)
     # content.append(Paragraph(f"Preparation {date}", styles["LeftAligned"]))

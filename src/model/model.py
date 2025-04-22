@@ -50,6 +50,7 @@ class Product(BaseModel):
 class Ingredient(BaseModel):
     ing_item_code: str = Field(..., alias="ingredient_item_code")
     ing_name: str = Field(..., alias="ingredient_name")
+    symbol_id: Optional[int] = Field(None, alias="symbol_id")
     vendor: str = Field(...)
     rm_code: str = Field(...)
     cas_num: Optional[str] = Field(None, alias="cas_number")
@@ -70,6 +71,7 @@ class Ingredient(BaseModel):
 class GlobalUpdates(BaseModel):
     ing_item_code: Optional[str] = None
     ing_name: Optional[str] = None
+    symbol_id: Optional[int] = None
     cas_num: Optional[str] = None
     ec_num: Optional[str] = None
     ing_type: Optional[str] = None

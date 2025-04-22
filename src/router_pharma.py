@@ -156,6 +156,7 @@ async def create_raw_data(data: Ingredient, data1: Declaration, db: AsyncSession
         query = insert(ingredient).values(
             ing_item_code=data.ing_item_code,
             ing_name=data.ing_name,
+            symbol_id=data.symbol_id,
             vendor=data.vendor,
             rm_code=data.rm_code,
             cas_num=data.cas_num,
