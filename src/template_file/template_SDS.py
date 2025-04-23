@@ -15,6 +15,8 @@ from src.engine.pharma_data import fetch_ingredient_data, fetch_product
 from rich.logging import RichHandler
 import warnings
 
+from src.engine.strip_html_tags import strip_html_tags
+
 # Configure RichHandler
 logging.basicConfig(
     level="DEBUG",
@@ -194,10 +196,9 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
     cas_number = ", ".join(cas_number)
     ec_number = ", ".join(ec_number)
 
+    product_name_footer = strip_html_tags(product_name.replace(' ', ''))
     if symbol_id:
-        product_name_footer = product_name.replace(' ', '').replace(chr(int(symbol_code, 16)), '')
-    else:
-        product_name_footer = product_name.replace(' ', '')
+        product_name_footer = product_name_footer.replace(chr(int(symbol_code, 16)), '')
     if company == 'SEB':
         company_name = "Specialty Enzymes & Probiotics<br/>13591 Yorba Ave.,<br/>Chino, CA-91710"
     elif company == 'EI':

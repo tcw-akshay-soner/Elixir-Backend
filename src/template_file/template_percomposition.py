@@ -2,13 +2,14 @@ import os
 import warnings
 import logging
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT, TA_CENTER
+from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT, TA_CENTER, TA_RIGHT
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from src.engine.pharma_data import fetch_product, fetch_composition, fetch_ingredient_data
+from src.engine.strip_html_tags import strip_html_tags
 from src.template_file import letterhead
 
 # Set up logging
@@ -33,20 +34,20 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     # product_name = data[0]['product_name'] if data else "N/A"
     for row in product_data:
         product_name = row['product_name']
+        product_name = "<p><em>DigeSEB Plus</em>™</p>"
         symbol_id = row['symbol_id']
         symbol_code = row['symbol_code']
         # symbol_name = row['symbol_name']
         symbol = row['symbol']
 
+    product_name_footer = strip_html_tags(product_name.replace(' ', ''))
     if symbol_id:
-        product_name_footer = product_name.replace(' ', '').replace(chr(int(symbol_code, 16)), '')
-    else:
-        product_name_footer = product_name.replace(' ', '')
+        product_name_footer = product_name_footer.replace(chr(int(symbol_code, 16)), '')
 
     header_style = ParagraphStyle('header_text',
-                                fontName='Cambria-Bold',
-                                fontSize=10,
-                                alignment=TA_LEFT)
+                                  fontName='Cambria-Bold',
+                                  fontSize=10,
+                                  alignment=TA_LEFT)
     ingredient = Paragraph('<u>INGREDIENTS</u>', style=header_style)
     composition = Paragraph('<u>% COMPOSITION</u>', style=header_style)
     ## Composition Data ##
@@ -91,7 +92,9 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     other_data = {key: f"{key} (from {', '.join(sorted(value))})" for key, value in others.items()}
     others_data = list(other_data.values())
 
-    file_name = f"{company}_{product_name_footer}_%Composition_01A0.pdf"
+    clean_product_name = strip_html_tags(product_name_footer)
+    # file_name = f"{company}_{product_name_footer}_%Composition_01A0.pdf"
+    file_name = f"{company}_{clean_product_name}_%Composition_01A0.pdf"
     file_path = os.path.join(temp_dir, file_name)
     c = canvas.Canvas(file_path)
     c, y, pfh = letterhead.header_footer(c, company)
@@ -104,34 +107,26 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     c.drawRightString(w - 30, y, date)
 
     ## Product Name Display
-    y = y - lineSpacing * 4
-    # Placeholder for product name
+    y -= lineSpacing*3
+    product_style = ParagraphStyle('product_style',
+                                   fontName='Cambria-Bold',
+                                   fontSize=30,
+                                   alignment=TA_RIGHT)
     if symbol_id == 0:
-        c.setFont('Cambria-Bold', 30)
-        c.drawRightString(w - 30, y, product_name.replace(chr(int(symbol_code, 16)), ''))
+        # Directly use the product name with HTML tags for bold and symbols
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}"
     elif symbol_id == 1 or symbol_id == 4:
-        c.setFont('Cambria-Bold', 30)
-        c.drawRightString(w - 30, y, product_name)
+        # Use bold and plain product name (without modifications)
+        product_name = f"{product_name}"
     else:
-        text = product_name
-        width = c.stringWidth(text, "Cambria-Bold", 30)
-        charSpace = 0
-        wordSpace = None
-        if charSpace:
-            width += (len(text) - 1) * charSpace
-        if wordSpace:
-            width += (text.count(u' ') + text.count(u'\xa0') - 1) * wordSpace
-        text_object = c.beginText(w - 30 - width, y)
-        product_name = product_name.replace(chr(int(symbol_code, 16)), '')
-        text_object.setFont("Cambria-Bold", 30)
-        text_object.textOut(product_name)
-        text_object.setRise(6)
-        text_object.setFont("Cambria-Bold", 30)
-        text_object.textOut(symbol)
-        text_object.setRise(0)
-        c.drawText(text_object)
+        # Combine product name and symbol using HTML tags for styling
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}<sup>{symbol}</sup>"
 
-    y = y - lineSpacing
+    p = Paragraph(product_name, product_style)
+    w, h = p.wrap(w, h)
+    p.drawOn(c, w - 30 - w, y - h)
+
+    y = y - h - lineSpacing*2
     c.setFont('Cambria-Regular', 10)
     c.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
     c.drawRightString(w - 30, y, "Proprietary and Confidential")
@@ -179,11 +174,11 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     ### END ###
 
     style_other = ParagraphStyle("Other_Text",
-                                fontName="Cambria-Italic",
-                                fontSize=8,
-                                textColor=colors.black,
-                                strikeColor=0.4,
-                                alignment=TA_CENTER)
+                                 fontName="Cambria-Italic",
+                                 fontSize=8,
+                                 textColor=colors.black,
+                                 strikeColor=0.4,
+                                 alignment=TA_CENTER)
 
     if others_data:
         text = "<b>Other ingredients:</b> Product standardized in a base of " + ", ".join(others_data)
@@ -202,17 +197,16 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
                                 leftIndent=30,
                                 rightIndent=30)
     text = "<b><u>Note:</u></b><br/>" \
-        "The potency of enzymes and probiotics are measured by activity levels and CFU count respectively." \
-        " Milligram amounts and percentage compositions can vary dependent on the starting raw material of each individual ingredient and are therefore not an accurate measure of efficacy."
+           "The potency of enzymes and probiotics are measured by activity levels and CFU count respectively." \
+           " Milligram amounts and percentage compositions can vary dependent on the starting raw material of each individual ingredient and are therefore not an accurate measure of efficacy."
     p = Paragraph(text, style_body)
     w, h = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
     p.drawOn(c, 0, y - h)  # Adjusting the Y-position to ensure proper alignment
 
-    product_name = product_name.replace(" ", "")
     c.setFont('Cambria-Regular', 8)
     # c.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
     c.setFillColorRGB(0, 0, 0, 1)
-    c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_%Composition_01A0")
+    c.drawRightString(w - 30, pfh + 6, f"{clean_product_name}_%Composition_01A0")
     c.showPage()
     c.save()
 

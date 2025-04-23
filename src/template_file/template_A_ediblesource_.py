@@ -3,13 +3,14 @@ import os
 
 from datetime import datetime
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_RIGHT
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import Paragraph, Table, TableStyle
 
 from src.engine.pharma_data import fetch_product, fetch_declaration_data
+from src.engine.strip_html_tags import strip_html_tags
 from src.template_file import letterhead
 from rich.logging import RichHandler
 
@@ -45,10 +46,9 @@ async def create_template_edible(date, temp_dir, company, product_id):
     #         edible = "No"
     # if edible == "No":
     #     raise ValueError("File generation failed due to 'One or More ingredients contain toxin content.'")
+    product_name_footer = strip_html_tags(product_name.replace(' ', ''))
     if symbol_id:
-        product_name_footer = product_name.replace(' ', '').replace(chr(int(symbol_code, 16)), '')
-    else:
-        product_name_footer = product_name.replace(' ', '')
+        product_name_footer = product_name_footer.replace(chr(int(symbol_code, 16)), '')
 
     file_name = f"{company}_{product_name_footer}_Edible source_01A0.pdf"
     file_path = os.path.join(temp_dir, file_name)
@@ -65,33 +65,26 @@ async def create_template_edible(date, temp_dir, company, product_id):
     c.drawRightString(w - 30, y, date)
 
     ## Product Section
-    y = y - lineSpacing * 4
-    # c.setFont('Times-Roman', 20)
-    # # c.drawRightString(w - 30, y, chr(int(symbol_code, 16)))
+    y -= lineSpacing * 3
+    product_style = ParagraphStyle('product_style',
+                                   fontName='Cambria-Bold',
+                                   fontSize=30,
+                                   alignment=TA_RIGHT)
     if symbol_id == 0:
-        c.setFont('Cambria-Bold', 30)
-        c.drawRightString(w - 30, y, product_name.replace(chr(int(symbol_code, 16)), ''))
+        # Directly use the product name with HTML tags for bold and symbols
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}"
     elif symbol_id == 1 or symbol_id == 4:
-        c.setFont('Cambria-Bold', 30)
-        c.drawRightString(w - 30, y, product_name)  # Placeholder for product name # Placeholder for symbol name
+        # Use bold and plain product name (without modifications)
+        product_name = f"{product_name}"
     else:
-        text = product_name
-        width = c.stringWidth(text, "Cambria-Bold", 30)
-        charSpace = 0
-        wordSpace = None
-        if charSpace: width += (len(text) - 1) * charSpace
-        if wordSpace: width += (text.count(u' ') + text.count(u'\xa0') - 1) * wordSpace
-        text_object = c.beginText(w - 30 - width, y)
-        product_name = product_name.replace(chr(int(symbol_code, 16)), '')
-        text_object.setFont("Cambria-Bold", 30)
-        text_object.textOut(product_name)
-        text_object.setRise(6)
-        text_object.setFont("Cambria-Bold", 30)
-        text_object.textOut(symbol)
-        text_object.setRise(0)
-        c.drawText(text_object)
+        # Combine product name and symbol using HTML tags for styling
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}<sup>{symbol}</sup>"
 
-    y = y - lineSpacing
+    p = Paragraph(product_name, product_style)
+    w, h = p.wrap(w, h)
+    p.drawOn(c, w - 30 - w, y - h)
+
+    y = y - h - lineSpacing * 2
     c.setFont('Cambria-Regular', 10)
     c.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
     c.drawRightString(w - 30, y, "Proprietary and Confidential")
