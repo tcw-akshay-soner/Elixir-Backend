@@ -3,7 +3,7 @@ import logging
 import re
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_JUSTIFY
+from reportlab.lib.enums import TA_JUSTIFY, TA_RIGHT
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph
 from reportlab.lib.pagesizes import A4
@@ -146,10 +146,26 @@ async def create_template_mflow(date, temp_dir, company, product_id):
     except Exception as e:
         logger.error(f"Error drawing MFlow chart: {e}")
 
-    c.setFont('Cambria-Regular', 8)
-    # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
-    c.setFillColorRGB(0, 0, 0, 1)
-    c.drawRightString(w - 30, pfh + 6, f"{clean_product_name}_MFlow Chart_01A0")
+    # c.setFont('Cambria-Regular', 8)
+    # # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
+    # c.setFillColorRGB(0, 0, 0, 1)
+    # c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_MFlow Chart_01A0")
+    para_style = ParagraphStyle(
+        name="RightAlign",
+        fontName="Cambria-Regular",
+        fontSize=8,
+        textColor=colors.black,
+        alignment=TA_RIGHT,
+        rightIndent=30  # similar to w - 30
+    )
+    # c.setFillColorRGB(0, 0, 0, 1)
+    product_name = product_name.replace(chr(int(symbol_code, 16)), '').replace(' ', '')
+    para_text = f"{product_name}_MFlow Chart_01A0"
+    paragraph = Paragraph(para_text, style=para_style)
+
+    # Wrap and draw
+    w, h = paragraph.wrapOn(c, w, h)
+    paragraph.drawOn(c, 0, pfh + 3)
     c.showPage()
     c.save()
 

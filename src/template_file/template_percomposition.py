@@ -34,7 +34,6 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     # product_name = data[0]['product_name'] if data else "N/A"
     for row in product_data:
         product_name = row['product_name']
-        product_name = "<p><em>DigeSEB Plus</em>™</p>"
         symbol_id = row['symbol_id']
         symbol_code = row['symbol_code']
         # symbol_name = row['symbol_name']
@@ -203,10 +202,26 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     w, h = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
     p.drawOn(c, 0, y - h)  # Adjusting the Y-position to ensure proper alignment
 
-    c.setFont('Cambria-Regular', 8)
-    # c.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
-    c.setFillColorRGB(0, 0, 0, 1)
-    c.drawRightString(w - 30, pfh + 6, f"{clean_product_name}_%Composition_01A0")
+    # c.setFont('Cambria-Regular', 8)
+    # # c.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
+    # c.setFillColorRGB(0, 0, 0, 1)
+    # c.drawRightString(w - 30, pfh + 6, f"{clean_product_name}_%Composition_01A0")
+    para_style = ParagraphStyle(
+        name="RightAlign",
+        fontName="Cambria-Regular",
+        fontSize=8,
+        textColor=colors.black,
+        alignment=TA_RIGHT,
+        rightIndent=30  # similar to w - 30
+    )
+    # c.setFillColorRGB(0, 0, 0, 1)
+    product_name = product_name.replace(chr(int(symbol_code, 16)), '').replace(' ', '')
+    para_text = f"{product_name}_%Composition_01A0"
+    paragraph = Paragraph(para_text, style=para_style)
+
+    # Wrap and draw
+    w, h = paragraph.wrapOn(c, w, h)
+    paragraph.drawOn(c, 0, pfh + 1)
     c.showPage()
     c.save()
 

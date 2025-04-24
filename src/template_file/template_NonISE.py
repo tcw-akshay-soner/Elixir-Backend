@@ -175,15 +175,37 @@ async def create_template_nonise(date, company, temp, product_id, temp_dir):
     w, h = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
     p.drawOn(c, 0, y - h)  # Adjusting the Y-position to ensure proper alignment
 
-    c.setFont('Cambria-Regular', 8)
-    # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
-    c.setFillColorRGB(0, 0, 0, 1)
-    if temp == "non-irradiated":
-        c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Non Irradiated_01A0")
-    elif temp == "non ise":
-        c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Non ISE_01A0")
-    elif temp == "non sewage and non eto":
-        c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Non Sewage and Non ETO_01A0")
+    # c.setFont('Cambria-Regular', 8)
+    # # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
+    # c.setFillColorRGB(0, 0, 0, 1)
+    # if temp == "non-irradiated":
+    #     c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Non Irradiated_01A0")
+    # elif temp == "non ise":
+    #     c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Non ISE_01A0")
+    # elif temp == "non sewage and non eto":
+    #     c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Non Sewage and Non ETO_01A0")
+    para_style = ParagraphStyle(
+        name="RightAlign",
+        fontName="Cambria-Regular",
+        fontSize=8,
+        textColor=colors.black,
+        alignment=TA_RIGHT,
+        rightIndent=30  # similar to w - 30
+    )
+    # c.setFillColorRGB(0, 0, 0, 1)
+    product_name = product_name.replace(chr(int(symbol_code, 16)), '').replace(' ', '')
+
+    if temp == 'non-irradiated':
+        para_text = f"{product_name}_Non Irradiated_01A0"
+    elif temp == 'non ise':
+        para_text = f"{product_name}_Non ISE_01A0"
+    elif temp == 'non sewage and non eto':
+        para_text = f"{product_name}_Non Sewage and Non ETO_01A0"
+    paragraph = Paragraph(para_text, style=para_style)
+
+    # Wrap and draw
+    w, h = paragraph.wrapOn(c, w, h)
+    paragraph.drawOn(c, 0, pfh + 1)
     c.showPage()
     c.save()
 

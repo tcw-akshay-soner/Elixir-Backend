@@ -36,7 +36,7 @@ async def create_template_lotcode(date, temp_dir, company, product_id):
         symbol_code = row['symbol_code']
         # symbol_name = row['symbol_name']
         symbol = row['symbol']
-
+    logger.info(f"Product Name: {product_name}")
     product_name_footer = strip_html_tags(product_name.replace(' ', ''))
     if symbol_id:
         product_name_footer = product_name_footer.replace(chr(int(symbol_code, 16)), '')
@@ -64,7 +64,7 @@ async def create_template_lotcode(date, temp_dir, company, product_id):
                                    alignment=TA_RIGHT)
     if symbol_id == 0:
         # Directly use the product name with HTML tags for bold and symbols
-        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}"
+        product_name = f"{product_name}"
     elif symbol_id == 1 or symbol_id == 4:
         # Use bold and plain product name (without modifications)
         product_name = f"{product_name}"
@@ -137,10 +137,26 @@ async def create_template_lotcode(date, temp_dir, company, product_id):
         p.drawOn(c, 0, y - h)  # Adjusting the Y-position to ensure proper alignment
         y = y - h - lineSpacing
 
-    c.setFont('Cambria-Regular', 8)
-    # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
-    c.setFillColorRGB(0, 0, 0, 1)
-    c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Lot Code_02A0")
+    # c.setFont('Cambria-Regular', 8)
+    # # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
+    # c.setFillColorRGB(0, 0, 0, 1)
+    # c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Lot Code_02A0")
+    para_style = ParagraphStyle(
+        name="RightAlign",
+        fontName="Cambria-Regular",
+        fontSize=8,
+        textColor=colors.black,
+        alignment=TA_RIGHT,
+        rightIndent=30  # similar to w - 30
+    )
+    # c.setFillColorRGB(0, 0, 0, 1)
+    product_name = product_name.replace(chr(int(symbol_code, 16)), '').replace(' ', '')
+    para_text = f"{product_name}_Lot Code_02A0"
+    paragraph = Paragraph(para_text, style=para_style)
+
+    # Wrap and draw
+    w, h = paragraph.wrapOn(c, w, h)
+    paragraph.drawOn(c, 0, pfh + 1)
     c.showPage()
     c.save()
     

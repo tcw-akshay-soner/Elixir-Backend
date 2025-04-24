@@ -49,7 +49,6 @@ async def create_template_composition(date, temp_dir, company, product_id):
     ing_data = await fetch_ingredient_data(product_id)
     others = {}
     for row in ing_data:
-        logger.info(f"Other Ingredient {row['other_ing']}")
         other_ingredient = row['other_ing']
         if other_ingredient:
             other_name = row['ing_name']
@@ -58,9 +57,8 @@ async def create_template_composition(date, temp_dir, company, product_id):
             continue
         if row['ing_name'] not in ingredients:
             ingredients.append(row['ing_name'])
-        logger.info(row['ing_name'])
     ingredients = ",".join(ingredients)
-    logger.info(ingredients)
+    # logger.info(ingredients)
     other_data = {}
     # Fixing "Other Ingredients" Section
     other_data = {key: f"{key} (from {', '.join(sorted(value))})" for key, value in others.items()}
@@ -159,9 +157,25 @@ async def create_template_composition(date, temp_dir, company, product_id):
         w, h = p.wrap(w, h)
         p.drawOn(c, x, y - h)
 
-    c.setFont('Cambria-Regular', 8)
-    c.setFillColorRGB(0, 0, 0, 1)
-    c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Composition_01A0")
+    # c.setFont('Cambria-Regular', 8)
+    # c.setFillColorRGB(0, 0, 0, 1)
+    # c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Composition_01A0")
+    para_style = ParagraphStyle(
+        name="RightAlign",
+        fontName="Cambria-Regular",
+        fontSize=8,
+        textColor=colors.black,
+        alignment=TA_RIGHT,
+        rightIndent=30  # similar to w - 30
+    )
+    # c.setFillColorRGB(0, 0, 0, 1)
+    product_name = product_name.replace(chr(int(symbol_code, 16)), '').replace(' ', '')
+    para_text = f"{product_name}_Composition_01A0"
+    paragraph = Paragraph(para_text, style=para_style)
+
+    # Wrap and draw
+    w, h = paragraph.wrapOn(c, w, h)
+    paragraph.drawOn(c, 0, pfh + 1)
     c.showPage()
     c.save()
 

@@ -318,12 +318,19 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
     content.append(Paragraph("<u>Preparation Information</u>", styles["Normal"]))
     content.append(Paragraph(data["company"], styles["Normal"]))
     content.append(Spacer(1, 14))
+    para_style = ParagraphStyle(
+        name="RightAlign",
+        fontName="Cambria-Regular",
+        fontSize=12,
+        textColor=colors.black,
+        alignment=TA_RIGHT  # similar to w - 30
+    )
     table_style = TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Cambria-Regular'),
         ('FONTSIZE', (0, 0), (-1, -1), 12),
         ('ALIGN', (0, 0), (0, 0), 'LEFT'),
         ('ALIGN', (1, 0), (1, 0), 'RIGHT')])
-    footer_data = [[f'Preparation - {date}', product_name_footer]]
+    footer_data = [[f'Preparation - {date}', Paragraph(product_name_footer, para_style)]]
     table = Table(footer_data, colWidths=[210, 280], style=table_style)
     content.append(table)
     # content.append(Paragraph(f"Preparation {date}", styles["LeftAligned"]))

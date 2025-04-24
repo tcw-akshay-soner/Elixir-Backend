@@ -175,17 +175,40 @@ async def create_template_ppr(date, temp_dir, company, product_id, temp):
     w, h = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
     p.drawOn(c, 0, y - h)  # Adjusting the Y-position to ensure proper alignment
 
-    c.setFont('Cambria-Regular', 8)
-    # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
-    c.setFillColorRGB(0, 0, 0, 1)
+    # c.setFont('Cambria-Regular', 8)
+    # # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
+    # c.setFillColorRGB(0, 0, 0, 1)
+    # if temp == "packaging":
+    #     c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Packaging_01A0")
+    # elif temp == "preservative":
+    #     c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Preservative_01A0")
+    # elif temp == "residual solvent":
+    #     c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Residual Solvent_02A0")
+    # elif temp == "wada":
+    #     c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_WADA_01A0")
+    para_style = ParagraphStyle(
+        name="RightAlign",
+        fontName="Cambria-Regular",
+        fontSize=8,
+        textColor=colors.black,
+        alignment=TA_RIGHT,
+        rightIndent=30  # similar to w - 30
+    )
+    # c.setFillColorRGB(0, 0, 0, 1)
+    product_name = product_name.replace(chr(int(symbol_code, 16)), '').replace(' ', '')
     if temp == "packaging":
-        c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Packaging_01A0")
+        para_text = f"{product_name}_Packaging_01A0"
     elif temp == "preservative":
-        c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Preservative_01A0")
+        para_text = f"{product_name}_Preservative_01A0"
     elif temp == "residual solvent":
-        c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Residual Solvent_02A0")
+        para_text = f"{product_name}_Residual Solvent_02A0"
     elif temp == "wada":
-        c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_WADA_01A0")
+        para_text = f"{product_name}_WADA_01A0"
+    paragraph = Paragraph(para_text, style=para_style)
+
+    # Wrap and draw
+    w, h = paragraph.wrapOn(c, w, h)
+    paragraph.drawOn(c, 0, pfh + 1)
     c.showPage()
     c.save()
     return file_path, file_name

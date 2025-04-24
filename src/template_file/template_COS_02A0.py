@@ -184,10 +184,26 @@ async def create_template_COS(date, temp_dir, company, product_id):
         p.drawOn(c, 0, y - h)
 
 
-    c.setFont('Cambria-Regular', 8)
-    # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
-    c.setFillColorRGB(0, 0, 0, 1)
-    c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_COS_02A0")
+    # c.setFont('Cambria-Regular', 8)
+    # # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
+    # c.setFillColorRGB(0, 0, 0, 1)
+    # c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_COS_02A0")
+    para_style = ParagraphStyle(
+        name="RightAlign",
+        fontName="Cambria-Regular",
+        fontSize=8,
+        textColor=colors.black,
+        alignment=TA_RIGHT,
+        rightIndent=30  # similar to w - 30
+    )
+    # c.setFillColorRGB(0, 0, 0, 1)
+    product_name = product_name.replace(chr(int(symbol_code, 16)), '').replace(' ', '')
+    para_text = f"{product_name}_COS_02A0"
+    paragraph = Paragraph(para_text, style=para_style)
+
+    # Wrap and draw
+    w, h = paragraph.wrapOn(c, w, h)
+    paragraph.drawOn(c, 0, pfh + 1)
     c.showPage()
     c.save()
 

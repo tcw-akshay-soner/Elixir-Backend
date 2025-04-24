@@ -294,7 +294,7 @@ async def create_template_allergen(date, temp_dir, company, product_id):
 
     # Wrap and draw
     w, h = paragraph.wrapOn(c, w, h)
-    paragraph.drawOn(c, 0, pfh + 3)
+    paragraph.drawOn(c, 0, pfh + 1)
     c.showPage()
     c.save()
 
