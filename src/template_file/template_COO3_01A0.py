@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from bs4 import BeautifulSoup
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 from reportlab.pdfgen import canvas
@@ -66,13 +67,23 @@ async def create_template_COO3(date, temp_dir, company, product_id):
         # logger.info(f"Other Ingredient {row['other_ing']}")
         # other_ingredient = row['other_ing']
         ingredient_name = row['ing_name']
+        ing_symbol_id = row['symbol_id']       ## Ingredient Symbol details
+        ing_symbol_code = row['symbol_code']
+        ing_symbol = row['symbol']
+        ### Draw special ingredients s
+        ## Separate special ingredients section if present
         # if other_ingredient:
         #     other_name = row['ing_name']
+        # soup = BeautifulSoup(row['source'], "html.parser")
+        # if soup.find('br'):
+        #     logger.info("Found it")
+        #     source = row['source'].replace('<p><br></p>', "")
+        #     logger.info(source)
+        #     others.setdefault(other_name, set()).add(source)
+        # else:
         #     others.setdefault(other_name, set()).add(row['source'])
-        #     # logger.info(f'Adding {row["ing_name"]} to others')
         #     continue
-        # if ingredient_name in ['Maltodextrin', 'FOS']:
-        #     continue
+
         if ingredient_name in ingredient_countries:
             ingredient_countries[ingredient_name].add(row['country_origin'])
         else:
@@ -80,14 +91,27 @@ async def create_template_COO3(date, temp_dir, company, product_id):
 
     ## Iterate Through the Collected Data
     for ingredient, countries in ingredient_countries.items():
+        if ing_symbol_id == 0:
+            # Directly use the product name with HTML tags for bold and symbols
+            ingredient = f"{ingredient.replace(chr(int(ing_symbol_code, 16)), '')}"
+        elif ing_symbol_id == 1:
+            # Use bold and plain product name (without modifications)
+            ingredient = f"{ingredient}"
+        else:
+            # Combine product name and symbol using HTML tags for styling
+            ingredient = f"{ingredient.replace(chr(int(ing_symbol_code, 16)), '')}<sup>{ing_symbol}</sup>"
         combined_country_data = "/".join(countries)
         dataset.append([Paragraph(ingredient, ing_style), combined_country_data])
 
     # other_data = {}
-    # # Fixing "Other Ingredients" Section
-    # other_data = {key: f"{key} (from {', '.join(sorted(value))})" for key, value in others.items()}
+    # "Other Ingredients" Section
+    # other_data = {
+    #         key: f"{key} (from {', '.join(sorted({v.strip() for v in value if v.strip()}))})"
+    #         if any(v.strip() for v in value) else f"{key}"
+    #         for key, value in others.items()
+    #     }
     # others_data = list(other_data.values())
-    # logger.info(f'others {others}')
+
     w, h = A4
     lineSpacing = 20
 
@@ -104,7 +128,7 @@ async def create_template_COO3(date, temp_dir, company, product_id):
     c.drawRightString(w - 30, y, date)
 
     ## Product Section
-    y -= lineSpacing * 3
+    y -= lineSpacing
     product_style = ParagraphStyle('product_style',
                                    fontName='Cambria-Bold',
                                    fontSize=30,
@@ -129,7 +153,7 @@ async def create_template_COO3(date, temp_dir, company, product_id):
     c.drawRightString(w - 30, y, "Proprietary and Confidential")
 
     ## Title
-    y = y - lineSpacing * 2
+    y = y - lineSpacing
     c.setFillColorRGB(0, 0, 0, 1)
     c.setFont("Cambria-Bold", 14)
     title = "CERTIFICATE OF ORIGIN"
@@ -164,21 +188,22 @@ async def create_template_COO3(date, temp_dir, company, product_id):
                               ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                               ('LEFTPADDING', (0, 0), (-1, -1), 10),
                               ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-                              ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-                              ('TOPPADDING', (0, 0), (-1, -1), 3)])
+                              ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                              ('TOPPADDING', (0, 0), (-1, -1), 2)])
     # y = y - lineSpacing
-    t = Table(dataset, style=table_style, colWidths=[150, 200], splitByRow=1, repeatRows=1)
+    t = Table(dataset, style=table_style, colWidths=[250, 200], splitByRow=1, repeatRows=1)
     tw, th = t.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
-    t.drawOn(c, tw / 2, (y - th - 20))  # Adjusting the Y-position to ensure proper alignment
+    t.drawOn(c, tw / 3, (y - th - 20))  # Adjusting the Y-position to ensure proper alignment
     y -= th + 30
 
     ### END TABLE ###
-    style_other = ParagraphStyle("Other_Text",
-                                 fontName="Cambria-Italic",
-                                 fontSize=8,
-                                 textColor=colors.black,
-                                 alignment=TA_CENTER,
-                                 leftIndent=0)
+    # Draw special ingredients section if present
+    # style_other = ParagraphStyle("Other_Text",
+    #                              fontName="Cambria-Italic",
+    #                              fontSize=8,
+    #                              textColor=colors.black,
+    #                              alignment=TA_CENTER,
+    #                              leftIndent=0)
 
     # if others_data:
     #     text = "<b>Other ingredients:</b> Product standardized in a base of " + ", ".join(others_data)
@@ -200,9 +225,6 @@ async def create_template_COO3(date, temp_dir, company, product_id):
     w, h = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
     p.drawOn(c, 30, y - h)  # Adjusting the Y-position to ensure proper alignment
 
-    # c.setFont('Cambria-Regular', 8)
-    # c.setFillColorRGB(0, 0, 0, 1)
-    # c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_COO3_01A0")
     para_style = ParagraphStyle(
         name="RightAlign",
         fontName="Cambria-Regular",
@@ -211,7 +233,6 @@ async def create_template_COO3(date, temp_dir, company, product_id):
         alignment=TA_RIGHT,
         rightIndent=30  # similar to w - 30
     )
-    # c.setFillColorRGB(0, 0, 0, 1)
     product_name = product_name.replace(chr(int(symbol_code, 16)), '').replace(' ', '')
     para_text = f"{product_name}_COO3_01A0"
     paragraph = Paragraph(para_text, style=para_style)

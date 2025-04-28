@@ -185,16 +185,19 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
         appearance = row['appearance']
         color = row['color']
 
-    cas_number = set()
-    ec_number = set()
+    cas_numbers = []
+    ec_numbers = []
     for row in ingredient_data:
-        # ingredient_name = row['ing_name']
-        if row['cas_num']:
-            cas_number.add(row['cas_num'])
-        if row['ec_num']:
-            ec_number.add(row['ec_num'])
-    cas_number = ", ".join(cas_number)
-    ec_number = ", ".join(ec_number)
+        cas_num = row['cas_num']
+        ec_num = row['ec_num']
+        if cas_num:
+            if cas_num not in cas_numbers:
+                cas_numbers.append(cas_num)
+        if ec_num:
+            if ec_num not in ec_numbers:
+                ec_numbers.append(ec_num)
+    cas_number = ", ".join(cas_numbers)
+    ec_number = ", ".join(ec_numbers)
 
     product_name_footer = strip_html_tags(product_name.replace(' ', ''))
     if symbol_id:
@@ -203,6 +206,16 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
         company_name = "Specialty Enzymes & Probiotics<br/>13591 Yorba Ave.,<br/>Chino, CA-91710"
     elif company == 'EI':
         company_name = "Enzyme Innovation<br/>13591 Yorba Ave.,<br/>Chino, CA-91710"
+
+    if symbol_id == 0:
+        # Directly use the product name with HTML tags for bold and symbols
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}"
+    elif symbol_id == 1 or symbol_id == 4:
+        # Use bold and plain product name (without modifications)
+        product_name = f"{product_name}"
+    else:
+        # Combine product name and symbol using HTML tags for styling
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}<sup>{symbol}</sup>"
 
     data = {
         "product_name": product_name,

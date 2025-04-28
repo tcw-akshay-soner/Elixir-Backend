@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from src.engine.pharma_db import engine
 from src.model.schemas import fda, product, items, ingredient, declaration, symbols
 from rich import print
+
 # Create session factory
 async_session = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -51,11 +52,11 @@ async def fetch_composition(product_id):
 async def fetch_ingredient_data(product_id):
     async with async_session() as session:
         try:
-            query = select(items, ingredient).join(
-                items,
-                ingredient.c.ing_item_code == items.c.ing_item_code,
-                isouter=True  # LEFT JOIN
-            ).where(items.c.product_id == product_id).order_by(items.c.seq_no)
+            query = (select(ingredient, items, symbols)
+                     .join(items, ingredient.c.ing_item_code == items.c.ing_item_code)
+                     .join(symbols, ingredient.c.symbol_id == symbols.c.symbol_id, isouter=True)
+                     .where(items.c.product_id == product_id)
+                     .order_by(items.c.seq_no))
             result = await session.execute(query)
             data = result.fetchall()
             return [dict(row._mapping) for row in data]
@@ -76,7 +77,6 @@ async def fetch_declaration_data(product_id):
             return [dict(row._mapping) for row in data]
         except SQLAlchemyError as e:
             print(e)
-
 
 # async def fetch_symbols_data(product_id):
 #     async with async_session() as session:

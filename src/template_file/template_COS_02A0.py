@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-
+from bs4 import BeautifulSoup
 # import structureddatastore as sds
 from datetime import datetime
 from reportlab.lib import colors
@@ -33,7 +33,6 @@ stylesheet = getSampleStyleSheet()
 async def create_template_COS(date, temp_dir, company, product_id):
     ## Product Data ##
     product_data = await fetch_product(product_id)
-    # product_name = product_data[0]['product_name'] if product_data else "N/A"
     for row in product_data:
         product_name = row['product_name']
         symbol_id = row['symbol_id']
@@ -64,35 +63,58 @@ async def create_template_COS(date, temp_dir, company, product_id):
                                fontName='Cambria-Regular',
                                fontSize=10,
                                alignment=TA_LEFT)
-    # maltodextrin = any(row['ing_name'] == 'Maltodextrin' for row in ingredient_data)
-    # fos = any(row['ing_name'] == 'FOS' for row in ingredient_data)
-    others = {}
-    for row in ingredient_data:
-        # logger.info(f"Other Ingredient {row['other_ing']}")
-        other_ingredient = row['other_ing']
-        ingredient_name = row['ing_name']
-        if other_ingredient:
-            other_name = row['ing_name']
-            others.setdefault(other_name, set()).add(row['source'])
-            # logger.info(f'Adding {row["ing_name"]} to others')
-            continue
-        # if ingredient_name in ['Maltodextrin', 'FOS']:
-        #     continue
-        # row['source'] = row['source'].replace('<em>', '<i>').replace('</em>', '</i>')
 
-        if ingredient_name in ingredient_source:
-            ingredient_source[ingredient_name].add(row['source'])
+    # others = {}
+    for row in ingredient_data:
+        # other_ingredient = row['other_ing']
+        ingredient_name = row['ing_name']
+        ing_symbol_id = row['symbol_id']       ## Ingredient Symbol details
+        ing_symbol_code = row['symbol_code']
+        ing_symbol = row['symbol']
+        ### Draw special ingredients section if present ###
+        # if other_ingredient:
+        #     other_name = row['ing_name']
+        #     soup = BeautifulSoup(row['source'], "html.parser")
+        #             if soup.find('br'):
+        #                 logger.info("Found it")
+        #                 source = row['source'].replace('<p><br></p>', "")
+        #                 logger.info(source)
+        #                 others.setdefault(other_name, set()).add(source)
+        #             else:
+        #                 others.setdefault(other_name, set()).add(row['source'])
+        #     # logger.info(f'Adding {row["ing_name"]} to others')
+        #     continue
+        soup = BeautifulSoup(row['source'], "html.parser")
+        if soup.find('br'):
+            source = row['source'].replace('<p><br></p>', "")
         else:
-            ingredient_source[ingredient_name] = {row['source']}
+            source = row['source']
+        if ingredient_name in ingredient_source:
+            ingredient_source[ingredient_name].add(source)
+        else:
+            ingredient_source[ingredient_name] = {source}
 
     for ingredient, sources in ingredient_source.items():
+        if ing_symbol_id == 0:
+            # Directly use the product name with HTML tags for bold and symbols
+            ingredient = f"{ingredient.replace(chr(int(ing_symbol_code, 16)), '')}"
+        elif ing_symbol_id == 1:
+            # Use bold and plain product name (without modifications)
+            ingredient = f"{ingredient}"
+        else:
+            # Combine product name and symbol using HTML tags for styling
+            ingredient = f"{ingredient.replace(chr(int(ing_symbol_code, 16)), '')}<sup>{ing_symbol}</sup>"
         combined_source_data = " / ".join(sorted(sources))
         dataset.append([Paragraph(ingredient, ing_style), Paragraph(combined_source_data, source_style)])
 
-    other_data = {}
-    # Fixing "Other Ingredients" Section
-    other_data = {key: f"{key} (from {', '.join(sorted(value))})" for key, value in others.items()}
-    others_data = list(other_data.values())
+    # other_data = {}
+    ## "Other Ingredients" Section ##
+    # other_data = {
+    #         key: f"{key} (from {', '.join(sorted({v.strip() for v in value if v.strip()}))})"
+    #         if any(v.strip() for v in value) else f"{key}"
+    #         for key, value in others.items()
+    #     }
+    # others_data = list(other_data.values())
 
     w, h = A4
     lineSpacing = 20
@@ -108,7 +130,7 @@ async def create_template_COS(date, temp_dir, company, product_id):
     c.drawRightString(w - 30, y, date)
 
     ## Product Name
-    y -= lineSpacing * 3
+    y -= lineSpacing
     product_style = ParagraphStyle('product_style',
                                    fontName='Cambria-Bold',
                                    fontSize=30,
@@ -132,7 +154,7 @@ async def create_template_COS(date, temp_dir, company, product_id):
     c.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
     c.drawRightString(w - 30, y, "Proprietary and Confidential")
 
-    y -= lineSpacing * 2
+    y -= lineSpacing
     c.setFillColorRGB(0, 0, 0, 1)
     c.setFont("Cambria-Bold", 14)
     title = "CERTIFICATE OF SOURCE"
@@ -162,41 +184,38 @@ async def create_template_COS(date, temp_dir, company, product_id):
         ('ALIGN', (0, 1), (-1, 0), 'LEFT'),
         ('LEFTPADDING', (0, 0), (-1, -1), 10),
         ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ('TOPPADDING', (0, 0), (-1, -1), 3)])
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('TOPPADDING', (0, 0), (-1, -1), 2)])
 
-    t = Table(dataset, style=table_style, colWidths=[150, 200], splitByRow=1, repeatRows=1)
+    t = Table(dataset, style=table_style, colWidths=[250, 150], splitByRow=1, repeatRows=1)
     tw, th = t.wrap(w, h)
-    t.drawOn(c, tw / 2, (y - th - 20))
+    t.drawOn(c, tw / 3, (y - th - 20))
     y -= th + 30
 
-    style_other = ParagraphStyle("Other_Text",
-                                 fontName="Cambria-Italic",
-                                 fontSize=8,
-                                 textColor=colors.black,
-                                 alignment=TA_CENTER,
-                                 liftindent=0)
+    ## Draw special ingredients section if present
+    # style_other = ParagraphStyle("Other_Text",
+    #                              fontName="Cambria-Italic",
+    #                              fontSize=8,
+    #                              textColor=colors.black,
+    #                              alignment=TA_CENTER,
+    #                              liftindent=0)
+    #
+    # if others_data:
+    #     text = "<b>Other ingredients:</b> Product standardized in a base of " + ", ".join(others_data)
+    #     p = Paragraph(text.strip(), style_other)
+    #     p.wrapOn(c, w, h)
+    #     p.drawOn(c, 0, y - h)
 
-    if others_data:
-        text = "<b>Other ingredients:</b> Product standardized in a base of " + ", ".join(others_data)
-        p = Paragraph(text.strip(), style_other)
-        p.wrapOn(c, w, h)
-        p.drawOn(c, 0, y - h)
 
 
-    # c.setFont('Cambria-Regular', 8)
-    # # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
-    # c.setFillColorRGB(0, 0, 0, 1)
-    # c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_COS_02A0")
     para_style = ParagraphStyle(
         name="RightAlign",
         fontName="Cambria-Regular",
         fontSize=8,
         textColor=colors.black,
         alignment=TA_RIGHT,
-        rightIndent=30  # similar to w - 30
+        rightIndent=30
     )
-    # c.setFillColorRGB(0, 0, 0, 1)
     product_name = product_name.replace(chr(int(symbol_code, 16)), '').replace(' ', '')
     para_text = f"{product_name}_COS_02A0"
     paragraph = Paragraph(para_text, style=para_style)
