@@ -108,8 +108,8 @@ async def create_template_mflow(date, temp_dir, company, product_id):
         product_name_clean = product_name
         text_html = f"{product_name} - Manufacturing Flow Chart"
     else:
-        product_name_clean = product_name.replace(chr(int(symbol_code, 16)), '')
-        text_html = f"{product_name_clean}<sup>{symbol}</sup> - Manufacturing Flow Chart"
+        product_name_clean = product_name.replace(chr(int(symbol_code, 16)), f'<sup>{symbol}</sup>')
+        text_html = f"{product_name_clean} - Manufacturing Flow Chart"
 
     # Create Paragraph and get size
     p = Paragraph(text_html, para_style)
@@ -130,7 +130,7 @@ async def create_template_mflow(date, temp_dir, company, product_id):
     elif symbol_id == 1 or symbol_id == 4:
         c.line(x - 0.5, y - ph*0.5, x + 0.5 + text_width, y - ph*0.5)
     else:
-        c.line(x - 4, y - ph*0.5, x + 4 + text_width, y - ph*0.5)
+        c.line(x - 0.5, y - ph*0.5, x + 0.5 + text_width, y - ph*0.5)
 
 
     # c.setFont("Cambria-Bold", 14)
@@ -139,12 +139,18 @@ async def create_template_mflow(date, temp_dir, company, product_id):
     # text_width = c.stringWidth(title, "Cambria-Bold", 14)
     y = y - lineSpacing * 3
     ### BODY TEXT SECTION ###
-
-    try:
-        mask = [0, 2, 40, 42, 136, 139]
-        c.drawImage("src/data/Mflowchart.png", 50, pfh + 100, mask=mask, height=500, width=500)
-    except Exception as e:
-        logger.error(f"Error drawing MFlow chart: {e}")
+    if company == "SEB":
+        try:
+            mask = [0, 2, 40, 42, 136, 139]
+            c.drawImage("src/data/Mflowchart.png", 50, pfh + 150, mask=mask, height=500, width=500)
+        except Exception as e:
+            logger.error(f"Error drawing MFlow chart: {e}")
+    elif company == "EI":
+        try:
+            mask = [0, 2, 40, 42, 136, 139]
+            c.drawImage("src/data/Mflowchart.png", 50, pfh + 140, mask=mask, height=500, width=500)
+        except Exception as e:
+            logger.error(f"Error drawing MFlow chart: {e}")
 
     # c.setFont('Cambria-Regular', 8)
     # # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
@@ -165,7 +171,7 @@ async def create_template_mflow(date, temp_dir, company, product_id):
 
     # Wrap and draw
     w, h = paragraph.wrapOn(c, w, h)
-    paragraph.drawOn(c, 0, pfh + 3)
+    paragraph.drawOn(c, 0, pfh + 1)
     c.showPage()
     c.save()
 

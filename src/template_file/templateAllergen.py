@@ -150,8 +150,8 @@ async def create_template_allergen(date, temp_dir, company, product_id):
     elif symbol_id == 1 or symbol_id == 4:
         text_html = f"Product: {product_name}"
     else:
-        product_name_clean = product_name.replace(chr(int(symbol_code, 16)), '')
-        text_html = f"Product: {product_name_clean}<super>{symbol}</super>"
+        product_name_clean = product_name.replace(chr(int(symbol_code, 16)), f'<super>{symbol}</super>')
+        text_html = f"Product: {product_name_clean}"
 
     # Create and draw Paragraph
     p = Paragraph(text_html, para_style)

@@ -81,7 +81,7 @@ def ei_section_data(product_data, prepare_custom_styles):
 
         "SECTION 4 – FIRST AID MEASURES": [{
             "subsection_title": "",
-            "content": Paragraph("In case of unintended overexposure, the following measures apply:")
+            "content": Paragraph("In case of unintended overexposure, the following measures apply:", prepare_custom_styles()['Normal'])
         }, {
             "subsection_title": "4.1 &nbsp;&nbsp;&nbsp;Description of first aid measures",
             "content": [

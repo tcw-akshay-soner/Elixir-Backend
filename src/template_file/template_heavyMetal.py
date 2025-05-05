@@ -76,7 +76,7 @@ async def create_template_heavymetal(date, temp_dir, company, product_id, temp):
         product_name = f"{product_name}"
     else:
         # Combine product name and symbol using HTML tags for styling
-        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}<sup>{symbol}</sup>"
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), f'<sup>{symbol}</sup>')}"
 
     p = Paragraph(product_name, product_style)
     w, h = p.wrap(w, h)

@@ -14,7 +14,9 @@ from src.engine.pharma_db import get_db
 from src.utilities.utils import(
     check_permission,
     create_refresh_token,
+    get_user_by_userId,
     get_user_by_email,
+    get_users,
     # check_password,
     create_access_token,
     create_user_db,
@@ -60,9 +62,10 @@ async def login(request: model.LoginRequest, db: AsyncSession = Depends(get_db))
         response = JSONResponse(
             content = {
                 "message" : "Login successful", 
-                "role" : user.role.value,
-                "email" : user.email, 
+                # "email" : user.email, 
                 "name" : user.name,
+                "userId" : user.id,
+                "role" : user.role.value,
                 "is_active" : user.is_active
                 # "expiry_time": expiry_time  # In seconds since Unix epoch (1970-01-01)
             }
@@ -71,16 +74,16 @@ async def login(request: model.LoginRequest, db: AsyncSession = Depends(get_db))
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=True,
-        samesite="None",
+        secure=False,
+        # samesite="Lax",
         max_age=60*60  # 60 minutes
         )
         response.set_cookie(
             key="refresh_token",
             value=refresh_token,
             httponly=True,
-            secure=True, 
-            samesite="None", # Important for cross-origin requests
+            secure=False, 
+            # samesite="Lax", # Important for cross-origin requests
             max_age=60*60*24  # 1 days
             
         )
@@ -117,11 +120,8 @@ async def check_session(request: Request, db: AsyncSession = Depends(get_db)):
         response.delete_cookie("access_token")
         return response
 
-    email = payload.get("email")
-
-    stmt = select(schemas.User).where(schemas.User.email == email)
-    result = await db.execute(stmt)
-    user = result.scalars().first()
+    userId = payload.get("userId")
+    user = await get_user_by_userId(db, userId= userId)
     
     if not user:
         response = JSONResponse(
@@ -133,7 +133,11 @@ async def check_session(request: Request, db: AsyncSession = Depends(get_db)):
 
     return {
         "message": "User authenticated",
-        "user": {"email": user.email, "role": user.role.value, "name": user.name, "is_active": user.is_active}
+        "user": {
+            # "email": user.email, 
+            "role": user.role.value, 
+            "name": user.name, 
+            "is_active": user.is_active}
     }
 
 # Admin Dashboard (Restricted to Admins Only)
@@ -142,12 +146,11 @@ async def check_session(request: Request, db: AsyncSession = Depends(get_db)):
     response_model = model.AdminDashboardResponse, 
     dependencies=[Depends(partial(check_permission, required_role="admin"))]
 )
-async def admin_panel(db: AsyncSession = Depends(get_db)):
+async def admin_panel(db: AsyncSession = Depends(get_db), offset: int = 0, limit : int = 100):
     try:
-        stmt = select(schemas.User)
-        result = await db.execute(stmt)
-        users = result.scalars().all()
-        return {"message": "Welcome to the Admin Dashboard!", "Users": users}
+        
+        users = await get_users(db, skip = offset, limit=limit)
+        return {"message": "Welcome to the Admin Dashboard!", "Top 100 Users": users}
 
     except Exception as e:
         logger.error(f"Error fetching all users: {str(e)}")
@@ -191,20 +194,20 @@ async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
         # Extract access token payload and expiry time
         access_payload = verify_token(access_token)
         access_expiry = access_payload.get("exp")
-        access_user = access_payload.get("role")
+        access_role = access_payload.get("role")
         
         # Fetch user details from db
-        user = await get_user_by_email(db, email=access_payload.get("email"))
-        if not user:
+        access_user = await get_user_by_userId(db, userId=access_payload.get("userId"))
+        if not access_user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User details not found")
         
         # Check if access token expires in the next 5 minutes, 
         current_time = datetime.now(timezone.utc).timestamp()
         remaining_time = access_expiry - current_time
         
-        if remaining_time >= 5 * 60 and access_user == user.role:
+        if remaining_time >= 5 * 60 and access_role == access_user.role:
             return JSONResponse(content={"message": "Access token is still valid", "expires_in": remaining_time})
-        elif remaining_time >= 5 * 60 and access_user != user.role:
+        elif remaining_time >= 5 * 60 and access_role != access_user.role:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Role Mismatch/Changed")
 
         # if access_expiry > current_time > 5 * 60:
@@ -213,20 +216,18 @@ async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
         # Verify refresh token and get user details
         refresh_payload = verify_refresh_token(refresh_token, access_token)
         refresh_expiry = refresh_payload.get("exp")
-        email = refresh_payload.get("email")
+        userId = refresh_payload.get("userId")
         
         if refresh_expiry < current_time:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired")
 
-        stmt = select(schemas.User).where(schemas.User.email == email)
-        result = await db.execute(stmt)
-        user = result.scalars().first()
+        refresh_user = await get_user_by_userId(db, userId = userId)
         
-        if not user:
+        if not refresh_user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
         # Generate new tokens
-        new_access_token, new_access_expiry = await create_access_token(user)
+        new_access_token, new_access_expiry = await create_access_token(access_user)
         
         response_data = {
             "message": "Access Token refreshed",
@@ -234,13 +235,25 @@ async def refresh_token(request: Request, db: AsyncSession = Depends(get_db)):
         }
 
         response = JSONResponse(content=response_data)
-        response.set_cookie("access_token", new_access_token, httponly=True, secure=True, samesite="None", max_age=60 * 60)
+        response.set_cookie(
+            "access_token", 
+            new_access_token, 
+            httponly=True, 
+            secure=False, 
+            # samesite = "Lax", 
+            max_age=60 * 60)
 
         # Generate new refresh token only if it's about to expire (within 5 minutes)
         refresh_lifespan = 60 * 60 * 24  # Assuming 24 hours (modify as per your config)
         if refresh_expiry - current_time <= 5 * 60:  # If refresh token has ≤5 minutes left
-            new_refresh_token, new_refresh_expiry = await create_refresh_token(user)
-            response.set_cookie("refresh_token", new_refresh_token, httponly=True, secure=True, samesite="None", max_age=refresh_lifespan)
+            new_refresh_token, new_refresh_expiry = await create_refresh_token(refresh_user)
+            response.set_cookie(
+                "refresh_token", 
+                new_refresh_token, 
+                httponly=True, 
+                secure=False, 
+                # samesite = "Lax", 
+                max_age=refresh_lifespan)
             response_data["refresh_token_expires_in"] = int(new_refresh_expiry - current_time)
 
         return response
@@ -269,9 +282,7 @@ async def update_user_profile(
 ):
     try:
         # Fetch user by email
-        stmt = select(schemas.User).where(schemas.User.email == email)
-        result = await db.execute(stmt)
-        user = result.scalars().first()
+        user = await get_user_by_email(db, email = email)
         
         if not user:
             raise HTTPException(
@@ -301,6 +312,16 @@ async def update_user_profile(
 @auth_router.post("/logout")
 async def logout(request: Request):
     response = JSONResponse(content={"message": "Logout successful"})
-    response.delete_cookie("access_token", httponly=True, secure=True, samesite="None")
-    response.delete_cookie("refresh_token", httponly=True, secure=True, samesite="None")
+    response.delete_cookie(
+        "access_token", 
+        httponly=True, 
+        secure=False, 
+        # samesite = "Lax"
+    )
+    response.delete_cookie(
+        "refresh_token", 
+        httponly=True, 
+        secure=False, 
+        # samesite = "Lax"
+    )
     return response

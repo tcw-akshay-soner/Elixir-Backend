@@ -121,6 +121,7 @@ fda = Table(
 
 class User(Base):
     __tablename__ = 'users'
+    id = Column(Integer, primary_key=True, autoincrement=True, unique=True)
     name = Column(String(64), nullable=False)
     email = Column(String(32), primary_key=True, unique=True, index=True, nullable=False)
     password = Column(String(32), nullable=False)

@@ -34,14 +34,16 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_EXPIRY_TIME", "60"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_EXPIRY_TIME", "1"))
 
 
+
 async def create_access_token(user : schemas.User) -> str:
     """Create a new JWT access token with the user's identity and role"""
     try:
         access_expiry = (datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)).timestamp()
         access_payload  = {
             "role" : user.role,
-            "name" : user.name,
-            "email" : user.email,
+            "userId" : user.id,
+            # "name" : user.name,
+            # "email" : user.email,
             "is_active" : user.is_active,
             # "password" : user.hashed_password, # major security risk because if the token is leaked, the hashed password is also exposed. 
             "exp" : access_expiry,
@@ -63,7 +65,7 @@ async def create_refresh_token(user : schemas.User) -> str:
     refresh_expire = (datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)).timestamp()
     
     refresh_payload = {
-        "email": user.email,
+        "userId": user.id,
         "exp": refresh_expire,
         "token_type": "refresh"  # Helps to differentiate token types
     }
@@ -87,12 +89,12 @@ def verify_refresh_token(refresh_token, access_token):
     """Verify the refresh token and return the payload"""
     try:
         payload = jwt.decode(token = refresh_token, key = JWT_SECRET, algorithms = ALGORITHM)
-        email = payload.get("email")
-        if not email:
+        userId = payload.get("userId")
+        if not userId:
             raise HTTPException(status_code = status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
         if access_token:
             access_payload = verify_token(access_token)
-            if email != access_payload.get("email"):
+            if userId != access_payload.get("userId"):
                 raise HTTPException(status_code = status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         return payload
     except jwt.ExpiredSignatureError:
@@ -100,47 +102,6 @@ def verify_refresh_token(refresh_token, access_token):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code = status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     
-
-### User Authentication ###
-async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)) -> Optional[schemas.User]:
-    """Retrieve the current user from session cookies."""
-    token = request.cookies.get("access_token")
-    if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-
-    payload = verify_token(token)
-    
-    # DEBUGGING: Print the decoded payload
-    print("Decoded Token Payload:", payload)
-    
-    email = payload.get("email")
-    if not email:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
-    stmt = select(schemas.User).where(schemas.User.email == email)
-    result = await db.execute(stmt)
-    user = result.scalars().first()
-
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    
-    return user
-
-async def check_active(user: schemas.User = Depends(get_current_user)) -> schemas.User:
-    """Check if a user is active."""
-    if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is inactive")
-    return user
-
-# async def check_permission(required_role: str, user: schemas.User = Depends(get_current_user)) -> schemas.User:
-async def check_permission(
-    user: schemas.User = Depends(get_current_user),
-    required_role: str = "user"
-) -> schemas.User:
-    """Ensure user has the required role dynamically."""
-    if user.role != required_role:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
-    return user
-
 
 # Database Functionalities
 # async def get_user(db: AsyncSession, user_id: int) -> Optional[schemas.User]:
@@ -158,6 +119,14 @@ async def get_user_by_email(db: AsyncSession, email: EmailStr) -> Optional[schem
         return result.scalars().first()
     except Exception as e:
         logger.error(f"Error in get_user_by_email : {e}")
+        raise HTTPException(status_code = status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
+
+async def get_user_by_userId(db: AsyncSession, userId: int) -> Optional[schemas.User]:
+    try:
+        result = await db.execute(select(schemas.User).filter(schemas.User.id == userId))
+        return result.scalars().first()
+    except Exception as e:
+        logger.error(f"Error in get_user_by_userId : {e}")
         raise HTTPException(status_code = status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
 
 async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100) -> list:
@@ -194,3 +163,42 @@ async def create_user_db(db: AsyncSession, user_data: model.UserCreate) -> schem
 # Simple password check
 async def check_password(plain_password : str, stored_password: str) -> bool:
     return plain_password == stored_password
+
+### User Authentication ###
+async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)) -> Optional[schemas.User]:
+    """Retrieve the current user from session cookies."""
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    payload = verify_token(token)
+    
+    # DEBUGGING: Print the decoded payload
+    print("Decoded Token Payload:", payload)
+    
+    userId = payload.get("userId")
+    if not userId:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+    
+    user = await get_user_by_userId(db, userId = userId)
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    
+    return user
+
+async def check_active(user: schemas.User = Depends(get_current_user)) -> schemas.User:
+    """Check if a user is active."""
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is inactive")
+    return user
+
+# async def check_permission(required_role: str, user: schemas.User = Depends(get_current_user)) -> schemas.User:
+async def check_permission(
+    user: schemas.User = Depends(get_current_user),
+    required_role: str = "user"
+) -> schemas.User:
+    """Ensure user has the required role dynamically."""
+    if user.role != required_role:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+    return user

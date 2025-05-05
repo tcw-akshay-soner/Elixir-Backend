@@ -67,6 +67,15 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
         ing_symbol_id = row['symbol_id']       ## Ingredient Symbol details
         ing_symbol_code = row['symbol_code']
         ing_symbol = row['symbol']
+        if ing_symbol_id == 0:
+            # Directly use the product name with HTML tags for bold and symbols
+            ingredient_name = f"{ingredient_name.replace(chr(int(ing_symbol_code, 16)), '')}"
+        elif ing_symbol_id == 1:
+            # Use bold and plain product name (without modifications)
+            ingredient_name = f"{ingredient_name}"
+        else:
+            # Combine product name and symbol using HTML tags for styling
+            ingredient_name = f"{ingredient_name.replace(chr(int(ing_symbol_code, 16)), f'<sup>{ing_symbol}</sup>')}"
         # if other_ingredient:
         #     other_name = row['ing_name']
         #     soup = BeautifulSoup(row['source'], "html.parser")
@@ -86,15 +95,6 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     ## Iterate Through the Collected Data
     combined_composition_data = set()
     for ingredient, compositions in ingredients_compositions.items():
-        if ing_symbol_id == 0:
-            # Directly use the product name with HTML tags for bold and symbols
-            ingredient = f"{ingredient.replace(chr(int(ing_symbol_code, 16)), '')}"
-        elif ing_symbol_id == 1:
-            # Use bold and plain product name (without modifications)
-            ingredient = f"{ingredient}"
-        else:
-            # Combine product name and symbol using HTML tags for styling
-            ingredient = f"{ingredient.replace(chr(int(ing_symbol_code, 16)), '')}<sup>{ing_symbol}</sup>"
         combined_composition_data = "/".join(compositions)
         dataset.append([Paragraph(ingredient, ing_style), combined_composition_data])
 
@@ -133,7 +133,7 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
         product_name = f"{product_name}"
     else:
         # Combine product name and symbol using HTML tags for styling
-        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}<sup>{symbol}</sup>"
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), f'<sup>{symbol}</sup>')}"
 
     p = Paragraph(product_name, product_style)
     w, h = p.wrap(w, h)
@@ -180,7 +180,7 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
                               ('BOTTOMPADDING', (0, 0), (-1, -1), 1.5),
                               ('TOPPADDING', (0, 0), (-1, -1), 1.5)])
 
-    t = Table(dataset, style=table_style, colWidths=[250, 200], splitByRow=1, repeatRows=1)
+    t = Table(dataset, style=table_style, colWidths=[250, 150], splitByRow=1, repeatRows=1)
     tw, th = t.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
     t.drawOn(c, tw / 3, (y - th - 20))  # Adjusting the Y-position to ensure proper alignment
     y = y - th - 20

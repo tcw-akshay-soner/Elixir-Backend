@@ -25,19 +25,18 @@ app = FastAPI(
     # dependencies=[Depends(get_current_user)]
 )
 
-ALLOWED_ORIGINS = [
-    "http://localhost:3095",  # React app URL
-    "http://207.244.255.24:3095/api",
-    "http://207.244.255.24:3095",# Production URL
-    "http://backend:3095",  # Docker container URL
-    "http://frontend:3095",  # Docker container URL
-    
+AllOWED_ORIGINS = [
+    "https://elixir-test-zeta.vercel.app",
+    "https://alert-cherice-thecodewise-e74c0ba9.koyeb.app",
+    "https://elixir-front-end-dun.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:8000",
 ]
 
 # CORS Middleware with AWS Cognito support
 app.add_middleware(
     CORSMiddleware, 
-    allow_origins = ALLOWED_ORIGINS,
+    allow_origins = AllOWED_ORIGINS,
     allow_credentials = True,
     allow_methods = ["*"],
     allow_headers = ["*"],

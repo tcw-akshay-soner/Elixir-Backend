@@ -71,6 +71,15 @@ async def create_template_COS(date, temp_dir, company, product_id):
         ing_symbol_id = row['symbol_id']       ## Ingredient Symbol details
         ing_symbol_code = row['symbol_code']
         ing_symbol = row['symbol']
+        if ing_symbol_id == 0:
+            # Directly use the product name with HTML tags for bold and symbols
+            ingredient_name = f"{ingredient_name.replace(chr(int(ing_symbol_code, 16)), '')}"
+        elif ing_symbol_id == 1:
+            # Use bold and plain product name (without modifications)
+            ingredient_name = f"{ingredient_name}"
+        else:
+            # Combine product name and symbol using HTML tags for styling
+            ingredient_name = f"{ingredient_name.replace(chr(int(ing_symbol_code, 16)), f'<sup>{ing_symbol}</sup>')}"
         ### Draw special ingredients section if present ###
         # if other_ingredient:
         #     other_name = row['ing_name']
@@ -95,15 +104,6 @@ async def create_template_COS(date, temp_dir, company, product_id):
             ingredient_source[ingredient_name] = {source}
 
     for ingredient, sources in ingredient_source.items():
-        if ing_symbol_id == 0:
-            # Directly use the product name with HTML tags for bold and symbols
-            ingredient = f"{ingredient.replace(chr(int(ing_symbol_code, 16)), '')}"
-        elif ing_symbol_id == 1:
-            # Use bold and plain product name (without modifications)
-            ingredient = f"{ingredient}"
-        else:
-            # Combine product name and symbol using HTML tags for styling
-            ingredient = f"{ingredient.replace(chr(int(ing_symbol_code, 16)), '')}<sup>{ing_symbol}</sup>"
         combined_source_data = " / ".join(sorted(sources))
         dataset.append([Paragraph(ingredient, ing_style), Paragraph(combined_source_data, source_style)])
 
@@ -143,7 +143,7 @@ async def create_template_COS(date, temp_dir, company, product_id):
         product_name = f"{product_name}"
     else:
         # Combine product name and symbol using HTML tags for styling
-        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}<sup>{symbol}</sup>"
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), f'<sup>{symbol}</sup>')}"
 
     p = Paragraph(product_name, product_style)
     w, h = p.wrap(w, h)

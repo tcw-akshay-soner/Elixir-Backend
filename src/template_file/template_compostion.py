@@ -48,7 +48,7 @@ async def create_template_composition(date, temp_dir, company, product_id):
     ingredients = []
     # composition = await fetch_composition(product_id)
     ing_data = await fetch_ingredient_data(product_id)
-    others = {}
+    others = []
     for row in ing_data:
         ing_symbol_id = row['symbol_id']  ## Ingredient Symbol details
         ing_symbol_code = row['symbol_code']
@@ -57,26 +57,37 @@ async def create_template_composition(date, temp_dir, company, product_id):
         ## To Separate other ingredients list
         if other_ingredient:
             other_name = row['ing_name']
-            soup = BeautifulSoup(row['source'], "html.parser")
-            if soup.find('br'):
-                source = row['source'].replace('<p><br></p>', "")
-                logger.info(source)
-                others.setdefault(other_name, set()).add(source)
-            else:
-                others.setdefault(other_name, set()).add(row['source'])
+            others.append(other_name)
+            # soup = BeautifulSoup(row['source'], "html.parser")
+            # if soup.find('br'):
+            #     source = row['source'].replace('<p><br></p>', "")
+            #     logger.info(source)
+            #     others.setdefault(other_name, set()).add(source)
+            # else:
+            #     others.setdefault(other_name, set()).add(row['source'])
             continue
         if row['ing_name'] not in ingredients:
+            if ing_symbol_id == 0:
+                # Directly use the product name with HTML tags for bold and symbols
+                row['ing_name'] = f"{row['ing_name'].replace(chr(int(ing_symbol_code, 16)), '')}"
+            elif ing_symbol_id == 1:
+                # Use bold and plain product name (without modifications)
+                row['ing_name'] = f"{row['ing_name']}"
+            else:
+                # Combine product name and symbol using HTML tags for styling
+                row['ing_name'] = f"{row['ing_name'].replace(chr(int(ing_symbol_code, 16)), f'<sup>{ing_symbol}</sup>')}"
             ingredients.append(row['ing_name'])
     ingredients = ",".join(ingredients)
 
-    other_data = {}
+    # other_data = {}
     # "Other Ingredients" Section
-    other_data = {
-        key: f"{key} (from {', '.join(sorted({v.strip() for v in value if v.strip()}))})"
-        if any(v.strip() for v in value) else f"{key}"
-        for key, value in others.items()
-    }
-    others_data = list(other_data.values())
+    # other_data = {
+    #     key: f"{key} (from {', '.join(sorted({v.strip() for v in value if v.strip()}))})"
+    #     if any(v.strip() for v in value) else f"{key}"
+    #     for key, value in others.items()
+    # }
+
+    # others_data = list(other_data.values())
 
     w, h = A4
     line_spacing = 20
@@ -106,7 +117,7 @@ async def create_template_composition(date, temp_dir, company, product_id):
         product_name = f"{product_name}"
     else:
         # Combine product name and symbol using HTML tags for styling
-        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}<sup>{symbol}</sup>"
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), f'<sup>{symbol}</sup>')}"
 
     p = Paragraph(product_name, product_style)
     w, h = p.wrap(w, h)
@@ -151,23 +162,14 @@ async def create_template_composition(date, temp_dir, company, product_id):
                             spaceAfter=4
                             )
     for i in ingredients:  # Iteration through ingredients list
-        if ing_symbol_id == 0:
-            # Directly use the product name with HTML tags for bold and symbols
-            i = f"{i.replace(chr(int(ing_symbol_code, 16)), '')}"
-        elif ing_symbol_id == 1:
-            # Use bold and plain product name (without modifications)
-            i = f"{i}"
-        else:
-            # Combine product name and symbol using HTML tags for styling
-            i = f"{i.replace(chr(int(ing_symbol_code, 16)), '')}<sup>{ing_symbol}</sup>"
         p = Paragraph(i, style1, bulletText='•')  # Including Paragraph in canvas with bullet text
         w, h = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
         p.drawOn(c, x + bullet_indent, y)  # Adjusting the Y-position to ensure proper alignment
         y -= line_spacing
 
     # Draw special ingredients section if present
-    if others_data:
-        text = f"<b>Other ingredients:</b> Product standardized in a base of {', '.join(others_data)}"
+    if others:
+        text = f"<b>Other ingredients:</b> Product standardized in a base of {', '.join(others)}"
         style_other = ParagraphStyle("Other_Text",
                                      fontName="Cambria-Italic",
                                      fontSize=8,

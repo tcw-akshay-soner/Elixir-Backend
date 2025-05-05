@@ -64,13 +64,13 @@ async def create_template_lotcode(date, temp_dir, company, product_id):
                                    alignment=TA_RIGHT)
     if symbol_id == 0:
         # Directly use the product name with HTML tags for bold and symbols
-        product_name = f"{product_name}"
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}"
     elif symbol_id == 1 or symbol_id == 4:
         # Use bold and plain product name (without modifications)
         product_name = f"{product_name}"
     else:
         # Combine product name and symbol using HTML tags for styling
-        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}<sup>{symbol}</sup>"
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), f'<sup>{symbol}</sup>')}"
 
     p = Paragraph(product_name, product_style)
     w, h = p.wrap(w, h)

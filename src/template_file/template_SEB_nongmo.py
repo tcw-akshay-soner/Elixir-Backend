@@ -90,7 +90,7 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
         product_name = f"{product_name}"
     else:
         # Combine product name and symbol using HTML tags for styling
-        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}<sup>{symbol}</sup>"
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), f'<sup>{symbol}</sup>')}"
 
     p = Paragraph(product_name, product_style)
     w, h = p.wrap(w, h)
@@ -142,13 +142,15 @@ async def create_template_nongmo(date, temp_dir, company, product_id):
             classification = row.get("classification")
             if classification in classification_map:
                 combined_classification.add(classification_map[classification])
+        combined_classification = [entry for key, entry in sorted_classification_map.items() if
+                                   entry in combined_classification]
     elif non_gmo == "No":
         gmo = ('STATEMENT ON GMO STATUS',
             """The above mentioned product(s) is not a GMO. The enzyme product is manufactured by fermentation of a microorganism that is not present in the final product. The production organism may be improved by means of modern biotechnology. """)
         combined_classification.add(gmo)
 
     # Convert the set to a sorted list based on the original key order
-    combined_classification = [entry for key, entry in sorted_classification_map.items() if entry in combined_classification]
+    # combined_classification = [entry for key, entry in sorted_classification_map.items() if entry in combined_classification]
 
     for title, content in combined_classification:        # Iteration for title and content in text data according to the code provided
         # Set title font color to black
