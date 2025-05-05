@@ -1,8 +1,9 @@
-import os
+import os, re
 import warnings
 import logging
+from bs4 import BeautifulSoup
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_JUSTIFY
+from reportlab.lib.enums import TA_JUSTIFY, TA_RIGHT
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph
 from reportlab.lib.pagesizes import A4
@@ -10,6 +11,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from src.engine.pharma_data import fetch_product, fetch_composition, fetch_ingredient_data
 from src.template_file import letterhead
+from src.engine.strip_html_tags import strip_html_tags
 
 from rich.logging import RichHandler
 
@@ -38,7 +40,7 @@ async def create_template_composition(date, temp_dir, company, product_id):
         symbol_code = product_data[0]['symbol_code']
         symbol = product_data[0]['symbol']
 
-    product_name_footer = product_name.replace(' ', '')
+    product_name_footer = strip_html_tags(product_name.replace(' ', ''))
     if symbol_id:
         product_name_footer = product_name_footer.replace(chr(int(symbol_code, 16)), '')
 
@@ -46,24 +48,46 @@ async def create_template_composition(date, temp_dir, company, product_id):
     ingredients = []
     # composition = await fetch_composition(product_id)
     ing_data = await fetch_ingredient_data(product_id)
-    others = {}
+    others = []
     for row in ing_data:
-        logger.info(f"Other Ingredient {row['other_ing']}")
+        ing_symbol_id = row['symbol_id']  ## Ingredient Symbol details
+        ing_symbol_code = row['symbol_code']
+        ing_symbol = row['symbol']
         other_ingredient = row['other_ing']
+        ## To Separate other ingredients list
         if other_ingredient:
             other_name = row['ing_name']
-            others.setdefault(other_name, set()).add(row['source'])
-            # logger.info(f'Adding {row["ing_name"]} to others')
+            others.append(other_name)
+            # soup = BeautifulSoup(row['source'], "html.parser")
+            # if soup.find('br'):
+            #     source = row['source'].replace('<p><br></p>', "")
+            #     logger.info(source)
+            #     others.setdefault(other_name, set()).add(source)
+            # else:
+            #     others.setdefault(other_name, set()).add(row['source'])
             continue
         if row['ing_name'] not in ingredients:
+            if ing_symbol_id == 0:
+                # Directly use the product name with HTML tags for bold and symbols
+                row['ing_name'] = f"{row['ing_name'].replace(chr(int(ing_symbol_code, 16)), '')}"
+            elif ing_symbol_id == 1:
+                # Use bold and plain product name (without modifications)
+                row['ing_name'] = f"{row['ing_name']}"
+            else:
+                # Combine product name and symbol using HTML tags for styling
+                row['ing_name'] = f"{row['ing_name'].replace(chr(int(ing_symbol_code, 16)), f'<sup>{ing_symbol}</sup>')}"
             ingredients.append(row['ing_name'])
-        logger.info(row['ing_name'])
     ingredients = ",".join(ingredients)
-    logger.info(ingredients)
-    other_data = {}
-    # Fixing "Other Ingredients" Section
-    other_data = {key: f"{key} (from {', '.join(sorted(value))})" for key, value in others.items()}
-    others_data = list(other_data.values())
+
+    # other_data = {}
+    # "Other Ingredients" Section
+    # other_data = {
+    #     key: f"{key} (from {', '.join(sorted({v.strip() for v in value if v.strip()}))})"
+    #     if any(v.strip() for v in value) else f"{key}"
+    #     for key, value in others.items()
+    # }
+
+    # others_data = list(other_data.values())
 
     w, h = A4
     line_spacing = 20
@@ -80,39 +104,32 @@ async def create_template_composition(date, temp_dir, company, product_id):
     c.drawRightString(w - 30, y, date)
 
     ## Product Name Display
-    y -= line_spacing * 4
+    y -= line_spacing * 3
+    product_style = ParagraphStyle('product_style',
+                                   fontName='Cambria-Bold',
+                                   fontSize=30,
+                                   alignment=TA_RIGHT)
     if symbol_id == 0:
-        c.setFont('Cambria-Bold', 30)
-        c.drawRightString(w - 30, y, product_name.replace(chr(int(symbol_code, 16)), ''))
+        # Directly use the product name with HTML tags for bold and symbols
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}"
     elif symbol_id == 1 or symbol_id == 4:
-        c.setFont('Cambria-Bold', 30)
-        c.drawRightString(w - 30, y, product_name)
+        # Use bold and plain product name (without modifications)
+        product_name = f"{product_name}"
     else:
-        text = product_name
-        width = c.stringWidth(text, "Cambria-Bold", 30)
-        charSpace = 0
-        wordSpace = None
-        if charSpace:
-            width += (len(text) - 1) * charSpace
-        if wordSpace:
-            width += (text.count(u' ') + text.count(u'\xa0') - 1) * wordSpace
-        text_object = c.beginText(w - 30 - width, y)
-        product_name = product_name.replace(chr(int(symbol_code, 16)), '')
-        text_object.setFont("Cambria-Bold", 30)
-        text_object.textOut(product_name)
-        text_object.setRise(6)
-        text_object.setFont("Cambria-Bold", 30)
-        text_object.textOut(symbol)
-        text_object.setRise(0)
-        c.drawText(text_object)
+        # Combine product name and symbol using HTML tags for styling
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), f'<sup>{symbol}</sup>')}"
 
-    y -= line_spacing
+    p = Paragraph(product_name, product_style)
+    w, h = p.wrap(w, h)
+    p.drawOn(c, w - 30 - w, y - h)
+
+    y = y - h - line_spacing * 2
     c.setFont('Cambria-Regular', 10)
     c.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
     c.drawRightString(w - 30, y, "Proprietary and Confidential")
 
     ## Title
-    y -= line_spacing * 3
+    y -= line_spacing * 1.5
     c.setFillColorRGB(0, 0, 0, 1)
     c.setFont("Cambria-Bold", 14)
     title = "COMPOSITION STATEMENT"
@@ -128,7 +145,10 @@ async def create_template_composition(date, temp_dir, company, product_id):
     bullet_indent = 30
     line_spacing = 15
     x = 100
-    y = 500
+    if company == 'EI':
+        y = 530
+    elif company == 'SEB':
+        y = 540
     if len(ingredients) > 1:
         ingredients = ingredients.split(',')
     maltodextrin = False
@@ -142,20 +162,14 @@ async def create_template_composition(date, temp_dir, company, product_id):
                             spaceAfter=4
                             )
     for i in ingredients:  # Iteration through ingredients list
-        # if i == 'Maltodextrin':
-        #     maltodextrin = True
-        #     continue
-        # elif i == 'FOS':
-        #     fos = True
-        #     continue
         p = Paragraph(i, style1, bulletText='•')  # Including Paragraph in canvas with bullet text
         w, h = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
         p.drawOn(c, x + bullet_indent, y)  # Adjusting the Y-position to ensure proper alignment
         y -= line_spacing
 
     # Draw special ingredients section if present
-    if others_data:
-        text = f"<b>Other ingredients:</b> Product standardized in a base of {', '.join(others_data)}"
+    if others:
+        text = f"<b>Other ingredients:</b> Product standardized in a base of {', '.join(others)}"
         style_other = ParagraphStyle("Other_Text",
                                      fontName="Cambria-Italic",
                                      fontSize=8,
@@ -165,9 +179,21 @@ async def create_template_composition(date, temp_dir, company, product_id):
         w, h = p.wrap(w, h)
         p.drawOn(c, x, y - h)
 
-    c.setFont('Cambria-Regular', 8)
-    c.setFillColorRGB(0, 0, 0, 1)
-    c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Composition_01A0")
+    para_style = ParagraphStyle(
+        name="RightAlign",
+        fontName="Cambria-Regular",
+        fontSize=8,
+        textColor=colors.black,
+        alignment=TA_RIGHT,
+        rightIndent=30
+    )
+    product_name = product_name.replace(chr(int(symbol_code, 16)), '').replace(' ', '')
+    para_text = f"{product_name}_Composition_01A0"
+    paragraph = Paragraph(para_text, style=para_style)
+
+    # Wrap and draw
+    w, h = paragraph.wrapOn(c, w, h)
+    paragraph.drawOn(c, 0, pfh + 1)
     c.showPage()
     c.save()
 

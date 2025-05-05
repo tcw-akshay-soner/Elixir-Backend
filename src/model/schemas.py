@@ -47,6 +47,7 @@ ingredient = Table(
     metadata,
     Column("ing_item_code", String, primary_key=True, nullable=False),
     Column("ing_name", String, nullable=False),
+    Column("symbol_id", Integer, ForeignKey("symbols.symbol_id"), nullable=True),
     Column("vendor", String, nullable=False),
     Column("rm_code", String, primary_key=True, nullable=False),
     Column("cas_num", String, nullable=True),
@@ -120,6 +121,7 @@ fda = Table(
 
 class User(Base):
     __tablename__ = 'users'
+    id = Column(Integer, primary_key=True, autoincrement=True, unique=True)
     name = Column(String(64), nullable=False)
     email = Column(String(32), primary_key=True, unique=True, index=True, nullable=False)
     password = Column(String(32), nullable=False)

@@ -1,14 +1,16 @@
 import os
 import warnings
 import logging
+from bs4 import BeautifulSoup
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT, TA_CENTER
+from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT, TA_CENTER, TA_RIGHT
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from src.engine.pharma_data import fetch_product, fetch_composition, fetch_ingredient_data
+from src.engine.strip_html_tags import strip_html_tags
 from src.template_file import letterhead
 
 # Set up logging
@@ -38,57 +40,74 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
         # symbol_name = row['symbol_name']
         symbol = row['symbol']
 
+    product_name_footer = strip_html_tags(product_name.replace(' ', ''))
     if symbol_id:
-        product_name_footer = product_name.replace(' ', '').replace(chr(int(symbol_code, 16)), '')
-    else:
-        product_name_footer = product_name.replace(' ', '')
+        product_name_footer = product_name_footer.replace(chr(int(symbol_code, 16)), '')
 
     header_style = ParagraphStyle('header_text',
-                                fontName='Cambria-Bold',
-                                fontSize=10,
-                                alignment=TA_LEFT)
+                                  fontName='Cambria-Bold',
+                                  fontSize=10,
+                                  alignment=TA_LEFT)
     ingredient = Paragraph('<u>INGREDIENTS</u>', style=header_style)
     composition = Paragraph('<u>% COMPOSITION</u>', style=header_style)
     ## Composition Data ##
     dataset = [[ingredient, composition]]
     # composition = await fetch_composition(product_id)
     ing_data = await fetch_ingredient_data(product_id)
-
+    ing_style = ParagraphStyle('ing_style',
+                               fontName='Cambria-Regular',
+                               fontSize=10,
+                               alignment=TA_LEFT)
     others = {}
 
     ingredients_compositions = {}
     for row in ing_data:
-        other_ingredient = row['other_ing']
+        # other_ingredient = row['other_ing']
         ingredient_name = row['ing_name']
-        if other_ingredient:
-            other_name = row['ing_name']
-            others.setdefault(other_name, set()).add(row['source'])
-            # logger.info(f'Adding {row["ing_name"]} to others')
-            continue
-        # if row['ing_name'] == 'Maltodextrin':
-        #     maltodextrin = True
-        #     continue
-        # elif row['ing_name'] == 'FOS':
-        #     fos = True
+        ing_symbol_id = row['symbol_id']       ## Ingredient Symbol details
+        ing_symbol_code = row['symbol_code']
+        ing_symbol = row['symbol']
+        if ing_symbol_id == 0:
+            # Directly use the product name with HTML tags for bold and symbols
+            ingredient_name = f"{ingredient_name.replace(chr(int(ing_symbol_code, 16)), '')}"
+        elif ing_symbol_id == 1:
+            # Use bold and plain product name (without modifications)
+            ingredient_name = f"{ingredient_name}"
+        else:
+            # Combine product name and symbol using HTML tags for styling
+            ingredient_name = f"{ingredient_name.replace(chr(int(ing_symbol_code, 16)), f'<sup>{ing_symbol}</sup>')}"
+        # if other_ingredient:
+        #     other_name = row['ing_name']
+        #     soup = BeautifulSoup(row['source'], "html.parser")
+        #             if soup.find('br'):
+        #                 logger.info("Found it")
+        #                 source = row['source'].replace('<p><br></p>', "")
+        #                 logger.info(source)
+        #                 others.setdefault(other_name, set()).add(source)
+        #             else:
+        #                 others.setdefault(other_name, set()).add(row['source'])
         #     continue
         if ingredient_name in ingredients_compositions:
             ingredients_compositions[ingredient_name].add(row['alpha_composition'])
         else:
             ingredients_compositions[ingredient_name] = {row['alpha_composition']}
-        # dataset.append([row['ing_name'], row['alpha_composition']])
 
     ## Iterate Through the Collected Data
     combined_composition_data = set()
     for ingredient, compositions in ingredients_compositions.items():
         combined_composition_data = "/".join(compositions)
-        dataset.append([ingredient, combined_composition_data])
+        dataset.append([Paragraph(ingredient, ing_style), combined_composition_data])
 
-    other_data = {}
-    # Fixing "Other Ingredients" Section
-    other_data = {key: f"{key} (from {', '.join(sorted(value))})" for key, value in others.items()}
-    others_data = list(other_data.values())
+    # other_data = {}
+    # "Other Ingredients" Section
+    #     other_data = {
+    #         key: f"{key} (from {', '.join(sorted({v.strip() for v in value if v.strip()}))})"
+    #         if any(v.strip() for v in value) else f"{key}"
+    #         for key, value in others.items()
+    #     }
+    # others_data = list(other_data.values())
 
-    file_name = f"{company}_{product_name_footer}_perComposition_01A0.pdf"
+    file_name = f"{company}_{product_name_footer}_%Composition_01A0.pdf"
     file_path = os.path.join(temp_dir, file_name)
     c = canvas.Canvas(file_path)
     c, y, pfh = letterhead.header_footer(c, company)
@@ -101,40 +120,32 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     c.drawRightString(w - 30, y, date)
 
     ## Product Name Display
-    y = y - lineSpacing * 4
-    # Placeholder for product name
+    y -= lineSpacing
+    product_style = ParagraphStyle('product_style',
+                                   fontName='Cambria-Bold',
+                                   fontSize=30,
+                                   alignment=TA_RIGHT)
     if symbol_id == 0:
-        c.setFont('Cambria-Bold', 30)
-        c.drawRightString(w - 30, y, product_name.replace(chr(int(symbol_code, 16)), ''))
+        # Directly use the product name with HTML tags for bold and symbols
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}"
     elif symbol_id == 1 or symbol_id == 4:
-        c.setFont('Cambria-Bold', 30)
-        c.drawRightString(w - 30, y, product_name)
+        # Use bold and plain product name (without modifications)
+        product_name = f"{product_name}"
     else:
-        text = product_name
-        width = c.stringWidth(text, "Cambria-Bold", 30)
-        charSpace = 0
-        wordSpace = None
-        if charSpace:
-            width += (len(text) - 1) * charSpace
-        if wordSpace:
-            width += (text.count(u' ') + text.count(u'\xa0') - 1) * wordSpace
-        text_object = c.beginText(w - 30 - width, y)
-        product_name = product_name.replace(chr(int(symbol_code, 16)), '')
-        text_object.setFont("Cambria-Bold", 30)
-        text_object.textOut(product_name)
-        text_object.setRise(6)
-        text_object.setFont("Cambria-Bold", 30)
-        text_object.textOut(symbol)
-        text_object.setRise(0)
-        c.drawText(text_object)
+        # Combine product name and symbol using HTML tags for styling
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), f'<sup>{symbol}</sup>')}"
 
-    y = y - lineSpacing
+    p = Paragraph(product_name, product_style)
+    w, h = p.wrap(w, h)
+    p.drawOn(c, w - 30 - w, y - h)
+
+    y = y - h - lineSpacing*2
     c.setFont('Cambria-Regular', 10)
     c.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
     c.drawRightString(w - 30, y, "Proprietary and Confidential")
 
     ## Title
-    y = y - lineSpacing * 2
+    y = y - lineSpacing
     c.setFillColorRGB(0, 0, 0, 1)
     c.setFont("Cambria-Bold", 14)
     c.drawCentredString(w / 2, y, "COMPOSITION STATEMENT")
@@ -146,7 +157,7 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
     c.line(x, y - 16 * 0.2, x + text_width, y - 16 * 0.2)
 
     ### BODY TEXT SECTION ###
-    y -= lineSpacing
+    y -= lineSpacing*0.5
     style_body = ParagraphStyle("Body_Text",
                                 fontName="Cambria-Regular",
                                 fontSize=11,
@@ -166,29 +177,29 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
                               ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                               ('LEFTPADDING', (0, 0), (-1, -1), 10),
                               ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-                              ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-                              ('TOPPADDING', (0, 0), (-1, -1), 3)])
+                              ('BOTTOMPADDING', (0, 0), (-1, -1), 1.5),
+                              ('TOPPADDING', (0, 0), (-1, -1), 1.5)])
 
-    t = Table(dataset, style=table_style, colWidths=[150, 200], splitByRow=1, repeatRows=1)
+    t = Table(dataset, style=table_style, colWidths=[250, 150], splitByRow=1, repeatRows=1)
     tw, th = t.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
-    t.drawOn(c, tw / 2, (y - th - 20))  # Adjusting the Y-position to ensure proper alignment
-    y = y - th - 30
+    t.drawOn(c, tw / 3, (y - th - 20))  # Adjusting the Y-position to ensure proper alignment
+    y = y - th - 20
     ### END ###
+    # Draw special ingredients section if present
+    # style_other = ParagraphStyle("Other_Text",
+    #                              fontName="Cambria-Italic",
+    #                              fontSize=8,
+    #                              textColor=colors.black,
+    #                              strikeColor=0.4,
+    #                              alignment=TA_CENTER)
+    #
+    # if others_data:
+    #     text = "<b>Other ingredients:</b> Product standardized in a base of " + ", ".join(others_data)
+    #     p = Paragraph(text.strip(), style_other)
+    #     p.wrapOn(c, w, h)
+    #     p.drawOn(c, 0, y - h)
 
-    style_other = ParagraphStyle("Other_Text",
-                                fontName="Cambria-Italic",
-                                fontSize=8,
-                                textColor=colors.black,
-                                strikeColor=0.4,
-                                alignment=TA_CENTER)
-
-    if others_data:
-        text = "<b>Other ingredients:</b> Product standardized in a base of " + ", ".join(others_data)
-        p = Paragraph(text.strip(), style_other)
-        p.wrapOn(c, w, h)
-        p.drawOn(c, 0, y - h)
-
-    y = y - h - lineSpacing
+    # y = y - lineSpacing
     style_body = ParagraphStyle("Body_Text",
                                 fontName="Cambria-Regular",
                                 fontSize=9,
@@ -199,17 +210,28 @@ async def create_template_percomposition(date, temp_dir, company, product_id):
                                 leftIndent=30,
                                 rightIndent=30)
     text = "<b><u>Note:</u></b><br/>" \
-        "The potency of enzymes and probiotics are measured by activity levels and CFU count respectively." \
-        " Milligram amounts and percentage compositions can vary dependent on the starting raw material of each individual ingredient and are therefore not an accurate measure of efficacy."
+           "The potency of enzymes and probiotics are measured by activity levels and CFU count respectively." \
+           " Milligram amounts and percentage compositions can vary dependent on the starting raw material of each individual ingredient and are therefore not an accurate measure of efficacy."
     p = Paragraph(text, style_body)
     w, h = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
     p.drawOn(c, 0, y - h)  # Adjusting the Y-position to ensure proper alignment
 
-    product_name = product_name.replace(" ", "")
-    c.setFont('Cambria-Regular', 8)
-    # c.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
-    c.setFillColorRGB(0, 0, 0, 1)
-    c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_%Composition_01A0")
+    para_style = ParagraphStyle(
+        name="RightAlign",
+        fontName="Cambria-Regular",
+        fontSize=8,
+        textColor=colors.black,
+        alignment=TA_RIGHT,
+        rightIndent=30  # similar to w - 30
+    )
+
+    product_name = product_name.replace(chr(int(symbol_code, 16)), '').replace(' ', '')
+    para_text = f"{product_name}_%Composition_01A0"
+    paragraph = Paragraph(para_text, style=para_style)
+
+    # Wrap and draw
+    w, h = paragraph.wrapOn(c, w, h)
+    paragraph.drawOn(c, 0, pfh + 1)
     c.showPage()
     c.save()
 

@@ -18,3 +18,4 @@ pyjwt
 python-jose
 rich
 python-multipart
+beautifulsoup4

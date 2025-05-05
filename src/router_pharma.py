@@ -156,6 +156,7 @@ async def create_raw_data(data: Ingredient, data1: Declaration, db: AsyncSession
         query = insert(ingredient).values(
             ing_item_code=data.ing_item_code,
             ing_name=data.ing_name,
+            symbol_id=data.symbol_id,
             vendor=data.vendor,
             rm_code=data.rm_code,
             cas_num=data.cas_num,
@@ -231,7 +232,9 @@ async def create_raw_data(data: Ingredient, data1: Declaration, db: AsyncSession
 
 
 # Route to retrieve data
-@mainRouter.get("/fetch_product", dependencies=[Depends(partial(check_permission, required_role="admin"))])
+@mainRouter.get("/fetch_product")
+# @mainRouter.get("/fetch_product", dependencies=[Depends(partial(check_permission, required_role="admin"))])
+
 async def read_product_data(
         db: AsyncSession = Depends(get_db)
 ):
@@ -336,6 +339,7 @@ async def fetch_declaration_data(
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @mainRouter.patch("/item/{product_id}")
 async def update_item(
         product_id: str, data: Items, data1: Product, db: AsyncSession = Depends(get_db)
@@ -392,6 +396,7 @@ async def update_item(
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @mainRouter.patch("/ingredient/{ing_item_code}")
 async def update_ingredient(
         ing_item_code: str,
@@ -429,7 +434,11 @@ async def update_ingredient(
                     .values(ing_item_code=global_update_data.pop("ing_item_code", ing_item_code))
                 )
                 await db.execute(query2)
-
+                query3 = (items.update()
+                          .where(items.c.ing_item_code == ing_item_code)
+                          .values(ing_name=global_update_data.pop("ing_name", None))
+                          )
+                await db.execute(query3)
         # Apply Row-Specific Updates (updates individual rows)
         if update_request.row_updates:
             for index, row in enumerate(update_request.row_updates):

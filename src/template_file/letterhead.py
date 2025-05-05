@@ -23,14 +23,14 @@ def header_footer(c, company):
         c.drawImage("src/data/sebLogo.jpg", 30, h - 90, mask=mask, height=65, width=190)
 
         ## Header Line
-        y = h - 90 - lineSpacing
+        y = h - 80 - lineSpacing
         c.setStrokeColorRGB(0.5, 0.5, 0.5, 0.3)
         c.line(30, y, 565, y)
         ### HEADER END ###
 
         ### FOOTER ###
         c.setStrokeColorRGB(0.5, 0.5, 0.5, 0.3)
-        c.line(30, 100, 565, 100)
+        c.line(30, 75, 565, 75)
 
         style_footer = ParagraphStyle("footer",
                                       fontName="Cambria-Regular",
@@ -52,6 +52,7 @@ def header_footer(c, company):
 
         p = Paragraph(footer_text, style_footer)
         pfw, pfh = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
+        pfh = pfh - 25
         p.drawOn(c, 0, pfh)  # Adjusting the Y-position to ensure proper alignment
 
         return c, y, pfh
@@ -60,10 +61,10 @@ def header_footer(c, company):
         ### HEADER START ###
         ## Adding the logo
         mask = [0, 2, 40, 42, 136, 139]
-        c.drawImage('src/data/eiLogo.png', 30, h - 140, mask=mask, height=100, width=350)
+        c.drawImage('src/data/eiLogo.png', 30, h - 120, mask=mask, height=100, width=350)
 
         ## Header Line
-        y = h - 100 - lineSpacing
+        y = h - 90 - lineSpacing
         ### HEADER END ###
 
         ### FOOTER ###
@@ -92,5 +93,6 @@ def header_footer(c, company):
 
         p = Paragraph(footer_text, style_footer)
         pfw, pfh = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
+        pfh = pfh - 25
         p.drawOn(c, 0, pfh)  # Adjusting the Y-position to ensure proper alignment
         return c, y, pfh

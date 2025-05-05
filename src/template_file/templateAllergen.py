@@ -1,10 +1,11 @@
 import os.path
+import re
 
 import warnings
 import logging
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT
+from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT, TA_RIGHT
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, TableStyle, Table
 from reportlab.lib.pagesizes import A4
@@ -25,7 +26,8 @@ logger = logging.getLogger(__name__)
 
 stylesheet = getSampleStyleSheet()
 warnings.filterwarnings('ignore')
-
+def strip_html_tags(text):
+    return re.sub(r'<[^>]+>', '', text)
 async def create_template_allergen(date, temp_dir, company, product_id):
     
     product_data = await fetch_product(product_id)
@@ -37,10 +39,9 @@ async def create_template_allergen(date, temp_dir, company, product_id):
         # symbol_name = row['symbol_name']
         symbol = row['symbol']
 
+    product_name_footer = strip_html_tags(product_name.replace(' ', ''))
     if symbol_id:
-        product_name_footer = product_name.replace(' ', '').replace(chr(int(symbol_code, 16)), '')
-    else:
-        product_name_footer = product_name.replace(' ', '')
+        product_name_footer = product_name_footer.replace(chr(int(symbol_code, 16)), '')
 
     declaration_data = await fetch_declaration_data(product_id)
     allergen_map = {
@@ -133,25 +134,31 @@ async def create_template_allergen(date, temp_dir, company, product_id):
     ### BODY TEXT SECTION ###
     ## TABLE ##
     ## Allergen alphabet table according to code '01A0', '01B0'...
-    if symbol_id == 0:
-        c.setFont('Cambria-Bold', 12)
-        c.drawString(50, y, f"Product: {product_name.replace(chr(int(symbol_code, 16)), '')}")
-    elif symbol_id == 1 or symbol_id == 4:
-        c.setFont('Cambria-Bold', 12)
-        c.drawString(50, y, f"Product: {product_name}")
-    else:
-        # text = product_name
-        text_object = c.beginText(50, y)
-        product_name = product_name.replace(chr(int(symbol_code, 16)), '')
-        text_object.setFont("Cambria-Bold", 12)
-        text_object.textOut(f"Product: {product_name}")
-        text_object.setRise(6)
-        text_object.setFont("Cambria-Bold", 12)
-        text_object.textOut(symbol)
-        text_object.setRise(0)
-        c.drawText(text_object)
 
-    y = y - lineSpacing
+    para_style = ParagraphStyle(
+        'ProductStyle',
+        fontName='Cambria-Bold',
+        fontSize=12,
+        textColor=colors.black,
+        leading=14,
+    )
+
+    # Format HTML-based text
+    if symbol_id == 0:
+        product_name_clean = product_name.replace(chr(int(symbol_code, 16)), '')
+        text_html = f"Product: {product_name_clean}"
+    elif symbol_id == 1 or symbol_id == 4:
+        text_html = f"Product: {product_name}"
+    else:
+        product_name_clean = product_name.replace(chr(int(symbol_code, 16)), f'<super>{symbol}</super>')
+        text_html = f"Product: {product_name_clean}"
+
+    # Create and draw Paragraph
+    p = Paragraph(text_html, para_style)
+    pw, ph = p.wrapOn(c, w - 100, y)
+    p.drawOn(c, 50, y)  # 50 is x, adjust y accordingly
+
+    y = y - ph
     style = TableStyle([('GRID', (0, 0), (-1, -1), 1, colors.black),
                         ('GRID', (0, 0), (0, -1), 1, colors.black),
                         ('GRID', (-1, 0), (-1, -1), 1, colors.black),
@@ -268,10 +275,26 @@ async def create_template_allergen(date, temp_dir, company, product_id):
     pfw, pfh = p.wrap(w, h)  # Wrap the text to avoid overflow by reducing the available width
     p.drawOn(c, 0, pfh)  # Adjusting the Y-position to ensure proper alignment
 
-    c.setFont('Cambria-Regular', 8)
-    # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
-    c.setFillColorRGB(0, 0, 0, 1)
-    c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Allergen_{code}")
+    # c.setFont('Cambria-Regular', 8)
+    # # c.setFillColorRGB(0.5, 0.5, 0.5, 1)
+    # c.setFillColorRGB(0, 0, 0, 1)
+    # c.drawRightString(w - 30, pfh + 6, f"{product_name_footer}_Allergen_{code}")
+    para_style = ParagraphStyle(
+        name="RightAlign",
+        fontName="Cambria-Regular",
+        fontSize=8,
+        textColor=colors.black,
+        alignment=TA_RIGHT,
+        rightIndent=30  # similar to w - 30
+    )
+    # c.setFillColorRGB(0, 0, 0, 1)
+    product_name = product_name.replace(chr(int(symbol_code, 16)), '').replace(' ', '')
+    para_text = f"{product_name}_Allergen_{code}"
+    paragraph = Paragraph(para_text, style=para_style)
+
+    # Wrap and draw
+    w, h = paragraph.wrapOn(c, w, h)
+    paragraph.drawOn(c, 0, pfh + 1)
     c.showPage()
     c.save()
 

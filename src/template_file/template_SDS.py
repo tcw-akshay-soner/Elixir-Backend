@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import datetime
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import (
@@ -11,19 +12,21 @@ from src.data.seb_sds_data import seb_section_data as seb_section_data
 from src.data.ei_sds_data import ei_section_data as ei_section_data
 from src.engine.pharma_data import fetch_ingredient_data, fetch_product
 
-
 from rich.logging import RichHandler
 import warnings
 
+from src.engine.strip_html_tags import strip_html_tags
+
 # Configure RichHandler
 logging.basicConfig(
-        level="DEBUG",
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[RichHandler(rich_tracebacks=True)]
+    level="DEBUG",
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True)]
 )
 logger = logging.getLogger(__name__)
 warnings.filterwarnings('ignore')
+
 
 def prepare_custom_styles():
     """
@@ -74,6 +77,12 @@ def prepare_custom_styles():
             fontSize=12,
             alignment=TA_LEFT,
             leading=14
+        ),
+        "secheading": ParagraphStyle(
+            name="secheading",
+            fontName="Cambria-Regular",
+            fontSize=12,
+            alignment=TA_LEFT,
         ),
         "justify": ParagraphStyle(
             name="justify",
@@ -144,7 +153,7 @@ def header_footer(canvas, doc, company):
     elif company == "EI":
         mask = [0, 2, 40, 42, 136, 139]
         canvas.drawImage('src/data/EI_only_logo.jpg', 30, h - 70, mask=mask, height=50, width=240)
-        canvas.drawImage('src/data/EI_add.png', 400 , h-70, mask=mask, height=40, width=150)
+        canvas.drawImage('src/data/EI_add.png', 400, h - 70, mask=mask, height=40, width=150)
         canvas.setFillColorRGB(0.7, 0.7, 0.7, 1)
         canvas.setFont("Cambria-Bold", 12)
         canvas.drawCentredString(w / 2, h - 90, "SAFETY DATA SHEET")
@@ -162,6 +171,7 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
     """
     Generate the SDS PDF dynamically based on product and compliance data.
     """
+    date = datetime.now().strftime('%B, %Y')
     product_data = await fetch_product(product_id)
     ingredient_data = await fetch_ingredient_data(product_id)
     for row in product_data:
@@ -175,25 +185,37 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
         appearance = row['appearance']
         color = row['color']
 
-    cas_number = set()
-    ec_number = set()
+    cas_numbers = []
+    ec_numbers = []
     for row in ingredient_data:
-        # ingredient_name = row['ing_name']
-        if row['cas_num']:
-            cas_number.add(row['cas_num'])
-        if row['ec_num']:
-            ec_number.add(row['ec_num'])
-    cas_number = ", ".join(cas_number)
-    ec_number = ", ".join(ec_number)
+        cas_num = row['cas_num']
+        ec_num = row['ec_num']
+        if cas_num:
+            if cas_num not in cas_numbers:
+                cas_numbers.append(cas_num)
+        if ec_num:
+            if ec_num not in ec_numbers:
+                ec_numbers.append(ec_num)
+    cas_number = ", ".join(cas_numbers)
+    ec_number = ", ".join(ec_numbers)
 
+    product_name_footer = strip_html_tags(product_name.replace(' ', ''))
     if symbol_id:
-        product_name_footer = product_name.replace(' ', '').replace(chr(int(symbol_code, 16)), '')
-    else:
-        product_name_footer = product_name.replace(' ', '')
+        product_name_footer = product_name_footer.replace(chr(int(symbol_code, 16)), '')
     if company == 'SEB':
         company_name = "Specialty Enzymes & Probiotics<br/>13591 Yorba Ave.,<br/>Chino, CA-91710"
     elif company == 'EI':
         company_name = "Enzyme Innovation<br/>13591 Yorba Ave.,<br/>Chino, CA-91710"
+
+    if symbol_id == 0:
+        # Directly use the product name with HTML tags for bold and symbols
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), '')}"
+    elif symbol_id == 1 or symbol_id == 4:
+        # Use bold and plain product name (without modifications)
+        product_name = f"{product_name}"
+    else:
+        # Combine product name and symbol using HTML tags for styling
+        product_name = f"{product_name.replace(chr(int(symbol_code, 16)), f'<sup>{symbol}</sup>')}"
 
     data = {
         "product_name": product_name,
@@ -245,11 +267,20 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
                     content.append(Spacer(1, 8))
                     content.append(Paragraph(f"{subsection['subsection_title']}", styles["Heading"]))
                     content.append(Spacer(1, 8))
+
+                # Fetching prefixes for the subsection
+                target_prefixes = tuple(f"10.{i}" for i in range(1, 7)) + tuple(f"12.{i}" for i in range(1, 6))
+
                 # Render subsection content
                 subsection_content = subsection["content"]
                 if isinstance(subsection_content, Paragraph):
                     content.append(subsection_content)
                 elif isinstance(subsection_content, Table):
+                    subsection_content.setStyle(TableStyle([
+                        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                        ('FONTNAME', (1, 0), (1, -1), 'Cambria-Regular'),
+                        ('FONTSIZE', (1, 0), (1, -1), 12)]))
                     content.append(subsection_content)
                 else:
                     table_data = []
@@ -300,12 +331,19 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
     content.append(Paragraph("<u>Preparation Information</u>", styles["Normal"]))
     content.append(Paragraph(data["company"], styles["Normal"]))
     content.append(Spacer(1, 14))
+    para_style = ParagraphStyle(
+        name="RightAlign",
+        fontName="Cambria-Regular",
+        fontSize=12,
+        textColor=colors.black,
+        alignment=TA_RIGHT  # similar to w - 30
+    )
     table_style = TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Cambria-Regular'),
         ('FONTSIZE', (0, 0), (-1, -1), 12),
         ('ALIGN', (0, 0), (0, 0), 'LEFT'),
         ('ALIGN', (1, 0), (1, 0), 'RIGHT')])
-    footer_data = [[f'Preparation {date}', product_name_footer]]
+    footer_data = [[f'Preparation - {date}', Paragraph(product_name_footer, para_style)]]
     table = Table(footer_data, colWidths=[210, 280], style=table_style)
     content.append(table)
     # content.append(Paragraph(f"Preparation {date}", styles["LeftAligned"]))

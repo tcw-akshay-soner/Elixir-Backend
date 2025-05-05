@@ -27,6 +27,8 @@ app = FastAPI(
 
 AllOWED_ORIGINS = [
     "https://elixir-test-zeta.vercel.app",
+    "https://alert-cherice-thecodewise-e74c0ba9.koyeb.app",
+    "https://elixir-front-end-dun.vercel.app",
     "http://localhost:3000",
     "http://localhost:8000",
 ]
