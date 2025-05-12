@@ -150,7 +150,7 @@ async def admin_panel(db: AsyncSession = Depends(get_db), offset: int = 0, limit
     try:
         
         users = await get_users(db, skip = offset, limit=limit)
-        return {"message": "Welcome to the Admin Dashboard!", "Top 100 Users": users}
+        return {"message": "Welcome to the Admin Dashboard!", "Users": users}
 
     except Exception as e:
         logger.error(f"Error fetching all users: {str(e)}")
