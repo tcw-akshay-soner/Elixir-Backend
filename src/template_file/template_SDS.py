@@ -305,11 +305,14 @@ async def create_sds_pdf(date, temp_dir, company, product_id):
                                     left, "", ""
                                 ])
                         else:
-                            table_data.append([
-                                Paragraph(left, styles["LeftAligned"]),
-                                ":",
-                                Paragraph(right, styles["RightAligned"])
-                            ])
+                            if left == "EC Number" and (ec_number == '' or ec_number is None):
+                                continue
+                            else:
+                                table_data.append([
+                                    Paragraph(left, styles["LeftAligned"]),
+                                    ":",
+                                    Paragraph(right, styles["RightAligned"])
+                                ])
                     table = Table(table_data, colWidths=[235, 15, 250])
                     table.setStyle(TableStyle([
                         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
